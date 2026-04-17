@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Fix
   m_EditorClassIdentifier: 
   displayName: Fix
-  outlineColor: {r: 1, g: 0.7607843, b: 0, a: 1}
+  outlineColor: {r: 0.071110725, g: 0.86931354, b: 0.8867924, a: 1}
   role: 1
   activeDuration: 3
   fishColor: {r: 1, g: 0.7604933, b: 0, a: 1}

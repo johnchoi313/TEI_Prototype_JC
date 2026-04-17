@@ -38,6 +38,13 @@ public class ProblemDefinition : ScriptableObject
     [Tooltip("Points awarded to the player who fixes this problem.")]
     public int pointValue = 1;
 
+    [Header("Dud")]
+    [Tooltip("If true, Fix power-up causes a penalty (red screen). Break neutralizes it with no score.")]
+    public bool isDud = false;
+
+    [Tooltip("Points deducted when a player incorrectly Fixes a dud. Score is clamped at 0.")]
+    public int penaltyValue = 1;
+
     [Header("Timing")]
     [Tooltip("Seconds after Fixed or Broken before the object destroys itself.")]
     public float despawnDelay = 3f;

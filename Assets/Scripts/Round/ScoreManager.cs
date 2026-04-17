@@ -61,6 +61,19 @@ public class ScoreManager : MonoBehaviour
         Debug.Log($"[ScoreManager] {player} score: {newTotal} ({(player == PlayerIndex.Player1 ? P1ProblemsSolved : P2ProblemsSolved)} problems)");
     }
 
+    /// <summary>Deducts points from a player's score (clamped at 0). Fires OnScoreChanged.</summary>
+    public void SubtractScore(PlayerIndex player, int amount)
+    {
+        if (player == PlayerIndex.Player1)
+            P1Score = Mathf.Max(0, P1Score - amount);
+        else
+            P2Score = Mathf.Max(0, P2Score - amount);
+
+        int newTotal = player == PlayerIndex.Player1 ? P1Score : P2Score;
+        OnScoreChanged?.Invoke(player, newTotal);
+        Debug.Log($"[ScoreManager] {player} PENALTY: -{amount}, new score: {newTotal}");
+    }
+
     public void ResetScores()
     {
         P1Score = 0;

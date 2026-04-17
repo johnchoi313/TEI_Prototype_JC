@@ -15,18 +15,29 @@ using UnityEngine.UI;
 ///
 /// SCENE SETUP
 ///   1. Place this component on a Manager GameObject.
-///   2. Assign _problemPrefab (the Problem prefab with ProblemObject.cs).
-///   3. Assign _minimapIconPrefab (a UI Image prefab for the minimap icon).
-///   4. Assign _minimapIconLayer (a RectTransform in the minimap canvas hierarchy
+///   2. Assign _normalProblemPrefabs (one or more prefabs with ProblemObject.cs, isDud = false).
+///   3. Assign _dudProblemPrefabs    (one or more prefabs with ProblemObject.cs, isDud = true).
+///   4. Tune _realProblemRatio (0–1 slider): fraction of spawns that produce a real problem.
+///   5. Assign _minimapIconPrefab (a UI Image prefab for the minimap icon).
+///   6. Assign _minimapIconLayer (a RectTransform in the minimap canvas hierarchy
 ///      that serves as the parent for all runtime-spawned problem icons).
 /// </summary>
 public class ProblemManager : MonoBehaviour
 {
     public static ProblemManager Instance { get; private set; }
 
-    [Header("Spawning")]
-    [Tooltip("The Problem prefab to instantiate. Must have ProblemObject.cs on the root.")]
-    [SerializeField] private GameObject _problemPrefab;
+    [Header("Spawning — Prefabs")]
+    [Tooltip("Normal (real) problem prefabs. One is picked at random each spawn.")]
+    [SerializeField] private GameObject[] _normalProblemPrefabs;
+
+    [Tooltip("Dud problem prefabs. One is picked at random each spawn.")]
+    [SerializeField] private GameObject[] _dudProblemPrefabs;
+
+    [Header("Spawning — Ratio")]
+    [Tooltip("Fraction of spawns that produce a real problem. " +
+             "1 = all real, 0 = all duds, 0.75 = 3-in-4 chance of a real problem.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float _realProblemRatio = 0.75f;
 
     [Tooltip("Maximum number of problems active at the same time.")]
     [SerializeField] private int _maxActiveProblems = 6;
@@ -112,16 +123,11 @@ public class ProblemManager : MonoBehaviour
     private void SpawnInPocket(ProblemSpawnPocket pocket)
     {
         if (pocket.IsOccupied) return;
-        if (_problemPrefab == null)
-        {
-            Debug.LogError("[ProblemManager] _problemPrefab not assigned.", this);
-            return;
-        }
 
-        ProblemDefinition def = pocket.PickDefinition();
-        if (def == null) return;
+        GameObject prefab = PickPrefab();
+        if (prefab == null) return;
 
-        GameObject go = Instantiate(_problemPrefab, pocket.transform.position, Quaternion.identity);
+        GameObject go = Instantiate(prefab, pocket.transform.position, Quaternion.identity);
         ProblemObject problem = go.GetComponent<ProblemObject>();
         if (problem == null)
         {
@@ -142,6 +148,31 @@ public class ProblemManager : MonoBehaviour
             if (tracker != null)
                 tracker.Initialize(icon);
         }
+    }
+
+    /// <summary>
+    /// Picks a prefab to spawn based on _realProblemRatio.
+    /// Rolls a random value: below the ratio → normal prefab, at or above → dud prefab.
+    /// Falls back to whichever array is populated if the other is empty.
+    /// </summary>
+    private GameObject PickPrefab()
+    {
+        bool hasNormal = _normalProblemPrefabs != null && _normalProblemPrefabs.Length > 0;
+        bool hasDud    = _dudProblemPrefabs    != null && _dudProblemPrefabs.Length    > 0;
+
+        if (!hasNormal && !hasDud)
+        {
+            Debug.LogError("[ProblemManager] No problem prefabs assigned — assign at least one normal or dud prefab.", this);
+            return null;
+        }
+
+        // Decide type, falling back gracefully if one array is empty.
+        bool spawnReal = Random.value < _realProblemRatio;
+        if (spawnReal && !hasNormal) spawnReal = false;
+        if (!spawnReal && !hasDud)  spawnReal = true;
+
+        GameObject[] pool = spawnReal ? _normalProblemPrefabs : _dudProblemPrefabs;
+        return pool[Random.Range(0, pool.Length)];
     }
 
     // ── Called by ProblemObject ───────────────────────────────────────────────

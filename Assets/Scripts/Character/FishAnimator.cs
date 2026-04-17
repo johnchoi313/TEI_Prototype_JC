@@ -51,12 +51,15 @@ public class FishAnimator : MonoBehaviour
     [Tooltip("Degrees per second Z drifts back to 0 (horizontal) when fish is idle.")]
     [SerializeField] private float idleReturnSpeed = 45f;
 
-    [Tooltip("Min speed (units/sec) before rotation updates. Prevents jitter at rest.")]
-    [SerializeField] private float rotationDeadzone = 0.15f;
+    [Tooltip("Min speed (units/sec) before rotation updates. Prevents jitter at rest. " +
+             "Raise this if the fish rotates when the player holds still (hand-tracking noise " +
+             "at playtest distance produces ~0.2-0.3 units/sec even when stationary).")]
+    [SerializeField] private float rotationDeadzone = 0.4f;
 
-    [Tooltip("Framerate-independent velocity smoothing. 0 = instant, 0.99 = very sluggish.")]
+    [Tooltip("Framerate-independent velocity smoothing. 0 = instant, 0.99 = very sluggish. " +
+             "Lower values settle faster so the fish stops rotating sooner after the hand stops.")]
     [Range(0f, 0.99f)]
-    [SerializeField] private float velocitySmoothing = 0.85f;
+    [SerializeField] private float velocitySmoothing = 0.65f;
 
     [Header("Particles — Speed Reference")]
     [Tooltip("Match this to FOVHighlightable.maxSpeed (default 3). Used to normalise speed → emission.")]
@@ -87,9 +90,8 @@ public class FishAnimator : MonoBehaviour
 
     // ── Private ───────────────────────────────────────────────────────────────
 
-    private Vector3   _lastPosition;
-    private Vector3   _smoothedVelocity;
-    private Rigidbody _rb;
+    private Vector3 _lastPosition;
+    private Vector3 _smoothedVelocity;
 
     // Y-flip rotation state
     private bool  _facingLeft;
@@ -110,27 +112,7 @@ public class FishAnimator : MonoBehaviour
 
         if (_wakeParticles == null)
             _wakeParticles = GetComponentInChildren<ParticleSystem>();
-
-        // Dynamic Rigidbody — physics depenetration keeps the fish out of walls.
-        // We zero velocity each FixedUpdate so contact forces never compound into knockback.
-        if (TryGetComponent<Rigidbody>(out _rb))
-        {
-            _rb.isKinematic   = false;
-            _rb.constraints   = RigidbodyConstraints.FreezeRotation;
-            _rb.interpolation = RigidbodyInterpolation.Interpolate;
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        // Zero any velocity accumulated from physics contacts (wall depenetration, etc.).
-        // The fish is moved by FOVHighlightable's direct transform.position writes, not forces.
-        // Clearing velocity here prevents knockback while leaving wall-blocking intact.
-        if (_rb != null)
-        {
-            _rb.linearVelocity  = Vector3.zero;
-            _rb.angularVelocity = Vector3.zero;
-        }
+        // Rigidbody setup is handled by FishFOVController.OnAwake.
     }
 
     private void LateUpdate()
@@ -216,6 +198,15 @@ public class FishAnimator : MonoBehaviour
             main.startSpeedMultiplier = Mathf.Lerp(minParticleSpeed, maxParticleSpeed, batterySquared);
         }
     }
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>Z rotation of the mesh pivot, clamped to [-90, 90]. Used by MinimapPlayerTracker.</summary>
+    public float FacingZAngle => _currentFacingZ;
+
+    /// <summary>True when the fish is in the left hemisphere (mesh pivot has Y=180 applied).
+    /// In 2D UI the equivalent is localScale.x = -1.</summary>
+    public bool IsFacingLeft => _facingLeft;
 
     // ── Gizmo ─────────────────────────────────────────────────────────────────
 

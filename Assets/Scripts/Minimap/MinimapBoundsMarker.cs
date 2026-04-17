@@ -16,6 +16,13 @@ public class MinimapBoundsMarker : MonoBehaviour
              "X = left edge, Y = bottom edge, Width = total width, Height = total height.")]
     public Rect worldBounds = new Rect(-10f, -7.5f, 20f, 15f);
 
+    [Header("Minimap Shape")]
+    [Tooltip("Per-level sprite defining the map's clip shape. " +
+             "Import a PNG with a white filled silhouette on a transparent background. " +
+             "Texture Type must be Sprite (2D and UI) with Alpha Is Transparency enabled. " +
+             "Leave empty to fall back to whatever sprite is set on _mapShapeImage in the prefab.")]
+    public Sprite mapShapeSprite;
+
 #if UNITY_EDITOR
     private void OnDrawGizmos()
     {

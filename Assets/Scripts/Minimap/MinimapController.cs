@@ -65,6 +65,17 @@ public class MinimapController : MonoBehaviour
     [Tooltip("Pixel size of the longer RT dimension. Affects sharpness only, not alignment.")]
     [SerializeField] private int _rtMaxResolution = 512;
 
+    [Header("Map Shape")]
+    [Tooltip("RawImage on the MapShape GameObject that holds the per-level silhouette texture. " +
+             "The MapShape GO must also have a Mask component. " +
+             "Texture is pulled from MinimapBoundsMarker.mapShapeSprite at runtime. " +
+             "RawImage is required so a custom shader material (e.g. MinimapRipple) can be assigned.")]
+    [SerializeField] private RawImage _mapShapeImage;
+
+    [Tooltip("Optional outline Image (sibling of MapContainer under MapShape). " +
+             "Sized to match MapContainer at runtime.")]
+    [SerializeField] private Image _mapBorderImage;
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private Rect            _worldBounds;
@@ -85,7 +96,13 @@ public class MinimapController : MonoBehaviour
     {
         ResolveWorldBounds();           // _worldBounds is ready from this point on
         ApplyBoundsToMapContainer();
+        ApplyMapShape();                // uses _mapContainer.sizeDelta — must run after ApplyBoundsToMapContainer
         SetupMinimapCamera();           // uses _worldBounds — no execution-order dependency
+
+        // Push correct aspect ratio to the ripple driver now that _worldBounds is final.
+        // worldBounds aspect matches the RT exactly — ensures circular rings, not ovals.
+        if (MinimapRippleDriver.Instance != null && _worldBounds.height > 0f)
+            MinimapRippleDriver.Instance.SetAspectRatio(_worldBounds.width / _worldBounds.height);
 
         if (_p1Tracker != null) _p1Tracker.Initialize(this, PlayerIndex.Player1);
         if (_p2Tracker != null) _p2Tracker.Initialize(this, PlayerIndex.Player2);
@@ -149,6 +166,25 @@ public class MinimapController : MonoBehaviour
             : new Vector2(_mapMaxSize * worldAspect, _mapMaxSize);  // taller than wide
 
         _mapContainer.sizeDelta = size;
+    }
+
+    /// <summary>
+    /// Applies the per-level shape sprite from MinimapBoundsMarker to _mapShapeImage
+    /// and syncs _mapBorderImage size to match MapContainer. Called after
+    /// ApplyBoundsToMapContainer() so _mapContainer.sizeDelta is already final.
+    /// </summary>
+    private void ApplyMapShape()
+    {
+        if (_mapShapeImage == null) return;
+
+        MinimapBoundsMarker marker = FindAnyObjectByType<MinimapBoundsMarker>();
+        if (marker != null && marker.mapShapeSprite != null)
+            _mapShapeImage.texture = marker.mapShapeSprite.texture;
+
+        // Sync MapShape and MapBorder pixel size to match MapContainer.
+        _mapShapeImage.rectTransform.sizeDelta = _mapContainer.sizeDelta;
+        if (_mapBorderImage != null)
+            _mapBorderImage.rectTransform.sizeDelta = _mapContainer.sizeDelta;
     }
 
     /// <summary>

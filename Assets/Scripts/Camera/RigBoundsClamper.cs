@@ -23,18 +23,22 @@ public class RigBoundsClamper : MonoBehaviour
 
     private void Start()
     {
-        MinimapBoundsMarker marker = FindAnyObjectByType<MinimapBoundsMarker>();
+        // FindObjectsInactive.Include ensures we find the marker even if its
+        // GameObject is disabled (e.g. hidden manager objects, prefab instances
+        // that start inactive, etc.).
+        MinimapBoundsMarker marker = FindAnyObjectByType<MinimapBoundsMarker>(FindObjectsInactive.Include);
         if (marker != null)
         {
             _bounds    = marker.worldBounds;
             _hasBounds = true;
-            Debug.Log($"[RigBoundsClamper] {name} clamped to {_bounds}");
+            Debug.Log($"[RigBoundsClamper] {name}: using MinimapBoundsMarker '{marker.name}' bounds = {_bounds}");
         }
         else
         {
             _bounds    = _fallbackBounds;
             _hasBounds = true;
-            Debug.LogWarning($"[RigBoundsClamper] {name}: no MinimapBoundsMarker found, using fallback.", this);
+            Debug.LogWarning($"[RigBoundsClamper] {name}: no MinimapBoundsMarker found in scene — using fallback bounds {_bounds}. " +
+                             "Add a MinimapBoundsMarker component to any GameObject in the scene.", this);
         }
     }
 

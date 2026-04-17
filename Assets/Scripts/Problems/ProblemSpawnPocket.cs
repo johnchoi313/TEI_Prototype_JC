@@ -13,16 +13,13 @@ using UnityEngine;
 /// LEVEL DESIGN GUIDE
 ///   • 10–12 pockets recommended for a 5-minute round.
 ///   • Vary placement: some in open water, some behind breakable walls.
-///   • Assign 2–3 candidateProblems per pocket for variety over the session.
 ///   • Use spawnOnStart = false for pockets near player spawn zones to give
 ///     a grace window at round start.
+///   • Which prefab spawns here is decided by ProblemManager (_realProblemRatio).
+///     Pockets only control WHERE problems appear, not what type.
 /// </summary>
 public class ProblemSpawnPocket : MonoBehaviour
 {
-    [Header("Content")]
-    [Tooltip("Which problem types can spawn here. Picked randomly each time a problem spawns.")]
-    [SerializeField] private ProblemDefinition[] candidateProblems;
-
     [Header("Behaviour")]
     [Tooltip("If false, this pocket is skipped during the initial fill at round start. " +
              "Useful for pockets near player spawn points.")]
@@ -48,19 +45,6 @@ public class ProblemSpawnPocket : MonoBehaviour
     {
         IsOccupied     = false;
         CurrentProblem = null;
-    }
-
-    /// <summary>
-    /// Returns a random candidate definition, or null if none are assigned.
-    /// </summary>
-    public ProblemDefinition PickDefinition()
-    {
-        if (candidateProblems == null || candidateProblems.Length == 0)
-        {
-            Debug.LogWarning($"[ProblemSpawnPocket] {name} has no candidate problems assigned.", this);
-            return null;
-        }
-        return candidateProblems[Random.Range(0, candidateProblems.Length)];
     }
 
     // ── Gizmo ─────────────────────────────────────────────────────────────────

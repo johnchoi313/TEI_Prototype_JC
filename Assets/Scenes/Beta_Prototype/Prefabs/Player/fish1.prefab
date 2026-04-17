@@ -52,9 +52,9 @@ MonoBehaviour:
   respondTo: 1
   inRangeColor: {r: 1, g: 0, b: 0, a: 1}
   atCenterColor: {r: 0, g: 1, b: 0, a: 1}
-  smoothTime: 0.3
+  smoothTime: 0.25
   arrivalThreshold: 0.1
-  maxSpeed: 3
+  maxSpeed: 15
   useNoiseBattery: 1
   fastSmoothTime: 0.15
   fastMaxSpeed: 10

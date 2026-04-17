@@ -6,10 +6,13 @@ using UnityEngine;
 /// A problem object that players discover and resolve using their power-ups.
 ///
 /// STATES
-///   Idle   — undiscovered; dimly lit; no minimap icon.
-///   Found  — FOV has illuminated it; full color; minimap icon appears.
-///   Fixed  — Fix power-up used nearby; scores a point; despawns after delay.
-///   Broken — Break power-up used nearby; no score; despawns after delay.
+///   Idle   — undiscovered; minimap icon hidden.
+///   Found  — FOV has illuminated it; CD turns yellow; minimap icon appears.
+///   Fixed  — Fix power-up used nearby; CD slides into TV; screen turns green; scores a point; despawns.
+///   Broken — Break power-up used nearby; all meshes scatter; no score; despawns.
+///            On a dud problem, Break is the *correct* action — same scatter, no score, no penalty.
+///            On a dud problem, Fix is the *wrong* action → TryDudPenalty: CD slides in, screen turns
+///            red, score deducted by penaltyValue.
 ///
 /// HOW FIX/BREAK DETECTION WORKS
 ///   PowerUpManager fires OnPowerUpActivated (static event) the instant a fist
@@ -20,13 +23,22 @@ using UnityEngine;
 ///     3. Does the power-up role match Fix or Break?
 ///   If all three pass → TryFix or TryBreak.
 ///
-///   No trigger colliders or layer-matrix setup needed. The radius check
-///   happens at the exact moment of activation, which is also the most
-///   physically intuitive feel for the player.
+/// PLAYER FREEZE
+///   When Fix or Break triggers, the activating player's fish is redirected to
+///   _standPosition (an empty child Transform placed in front of the TV) via
+///   FishFOVController.SetOverrideTarget. The override is cleared after the
+///   despawn delay so normal FOV-following resumes automatically.
+///
+/// VISUAL FEEDBACK
+///   All color changes and animations are delegated to ProblemVisualController
+///   (auto-fetched via GetComponent in OnAwake). SetMaterialColor from the base
+///   class is never called — ProblemVisualController owns all renderer state.
 ///
 /// PREFAB REQUIREMENTS
-///   • Root must have a Renderer (required by FOVHighlightable).
+///   • Root must have at least one child Renderer (required by FOVHighlightable base).
 ///   • Assign a ProblemDefinition SO in the Inspector.
+///   • Assign _standPosition (empty child Transform) in the Inspector.
+///   • ProblemVisualController must also be on the root GO.
 /// </summary>
 public class ProblemObject : FOVHighlightable
 {
@@ -38,15 +50,27 @@ public class ProblemObject : FOVHighlightable
     [Tooltip("World-unit radius within which a player's fist gesture will interact with this problem.")]
     [SerializeField] private float _interactionRadius = 3f;
 
-    [Header("Audio (optional)")]
-    [SerializeField] private AudioSource _audioSource;
+    [Tooltip("Empty child Transform placed where the player should stand during the interaction animation. " +
+             "If not assigned, the fish freezes at its current position when the power-up fires.")]
+    [SerializeField] private Transform _standPosition;
+
+    [Tooltip("Seconds the TV stays visible with the green screen after the CD slides in, before despawning.")]
+    [SerializeField] private float _postAnimationHoldDuration = 2f;
 
     // ── Runtime state ─────────────────────────────────────────────────────────
 
     public ProblemState      State      { get; private set; } = ProblemState.Idle;
     public ProblemDefinition Definition => _definition;
 
-    private ProblemSpawnPocket _spawnPocket;
+    private ProblemSpawnPocket      _spawnPocket;
+    private ProblemVisualController _visuals;
+
+    // The root BoxCollider that physically blocks the fish during normal play.
+    // Disabled at the start of any interaction so the fish's dynamic Rigidbody
+    // doesn't receive a PhysX depenetration impulse when rb.MovePosition fires
+    // toward the stand position while the fish is overlapping the TV.
+    // Never re-enabled — the problem despawns after every interaction.
+    private Collider _physicsCollider;
 
     // ── Events ────────────────────────────────────────────────────────────────
 
@@ -57,8 +81,9 @@ public class ProblemObject : FOVHighlightable
 
     protected override void OnAwake()
     {
-        if (_definition != null)
-            SetMaterialColor(_definition.idleColor);
+        _visuals           = GetComponent<ProblemVisualController>();
+        _physicsCollider   = GetComponent<Collider>();
+        _visuals?.Refresh(ProblemState.Idle);
     }
 
     protected override void OnEnterFOVRange(Vector3 fovCenter)
@@ -95,24 +120,141 @@ public class ProblemObject : FOVHighlightable
 
         if (dist > _interactionRadius) return;
 
-        if (def.role == PowerUpRole.Fix)   TryFix(player);
-        else if (def.role == PowerUpRole.Break) TryBreak(player);
+        bool isDud = _definition != null && _definition.isDud;
+
+        if (def.role == PowerUpRole.Fix)
+        {
+            if (isDud) TryDudPenalty(player);
+            else       TryFix(player);
+        }
+        else if (def.role == PowerUpRole.Break)
+        {
+            TryBreak(player); // same for both normal and dud — scatter, no score
+        }
     }
 
     private void TryFix(PlayerIndex player)
     {
-        TransitionTo(ProblemState.Fixed);
+        DisablePhysicsCollider(); // must be first — stops depenetration before rb.MovePosition fires
+        TransitionTo(ProblemState.Fixed); // UpdateVisuals → _visuals.Refresh(Fixed) → CD green
         ScoreManager.Instance?.AddScore(player, _definition != null ? _definition.pointValue : 1);
-        PlaySound(_definition?.fixedSound);
-        StartCoroutine(DespawnAfterDelay(_definition != null ? _definition.despawnDelay : 3f));
+        SoundManager.Instance?.PlayAt(_definition?.fixedSound, transform.position);
+        FreezePlayerAt(player);
+        StartCoroutine(FixSequence(player));
+    }
+
+    private IEnumerator FixSequence(PlayerIndex player)
+    {
+        // Wait for the visual animation (CD slide + screen color change) to complete,
+        // or fall back to despawnDelay if no visual controller is wired.
+        if (_visuals != null)
+            yield return _visuals.PlayFixAnimation();
+        else
+            yield return new WaitForSeconds(_definition != null ? _definition.despawnDelay : 3f);
+
+        // Hold on the green-screen TV so the player can see the resolved state before it disappears.
+        yield return new WaitForSeconds(_postAnimationHoldDuration);
+
+        UnfreezePlayer(player);
+        ProblemManager.Instance?.OnProblemDespawned(this, _spawnPocket);
+        Destroy(gameObject);
     }
 
     private void TryBreak(PlayerIndex player)
     {
-        TransitionTo(ProblemState.Broken);
+        DisablePhysicsCollider(); // must be first — stops depenetration before rb.MovePosition fires
+        TransitionTo(ProblemState.Broken); // UpdateVisuals → Refresh(Broken) → CD red
         OnProblemBroken?.Invoke(player);
-        PlaySound(_definition?.brokenSound);
-        StartCoroutine(DespawnAfterDelay(_definition != null ? _definition.despawnDelay : 3f));
+        SoundManager.Instance?.PlayAt(_definition?.brokenSound, transform.position);
+
+        Vector3 blastOrigin = PowerUpManager.Instance?.GetFish(player)?.transform.position
+                              ?? transform.position;
+        FreezePlayerAt(player);
+        _visuals?.PlayBreakAnimation(blastOrigin);
+
+        StartCoroutine(BreakSequence(player));
+    }
+
+    private IEnumerator BreakSequence(PlayerIndex player)
+    {
+        yield return new WaitForSeconds(_definition != null ? _definition.despawnDelay : 3f);
+        UnfreezePlayer(player);
+        ProblemManager.Instance?.OnProblemDespawned(this, _spawnPocket);
+        Destroy(gameObject);
+    }
+
+    private void TryDudPenalty(PlayerIndex player)
+    {
+        // Wrong action: Fix on a dud. CD slides in, screen turns red, score deducted.
+        DisablePhysicsCollider();
+        TransitionTo(ProblemState.Broken); // Refresh(Broken) → CD turns red
+        ScoreManager.Instance?.SubtractScore(player, _definition != null ? _definition.penaltyValue : 1);
+        SoundManager.Instance?.PlayAt(_definition?.brokenSound, transform.position);
+        FreezePlayerAt(player);
+        StartCoroutine(MalfunctionSequence(player));
+    }
+
+    private IEnumerator MalfunctionSequence(PlayerIndex player)
+    {
+        if (_visuals != null)
+            yield return _visuals.PlayMalfunctionAnimation();
+        else
+            yield return new WaitForSeconds(_definition != null ? _definition.despawnDelay : 3f);
+
+        // Hold on the red-screen TV so the player can see the failure state before it disappears.
+        yield return new WaitForSeconds(_postAnimationHoldDuration);
+
+        UnfreezePlayer(player);
+        ProblemManager.Instance?.OnProblemDespawned(this, _spawnPocket);
+        Destroy(gameObject);
+    }
+
+    // ── Collider management ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Disables the root BoxCollider so the fish's dynamic Rigidbody stops generating
+    /// PhysX depenetration impulses against the TV when rb.MovePosition fires.
+    /// Called at the very start of TryFix / TryBreak, before FreezePlayerAt.
+    /// Never re-enabled — the problem always despawns after interaction.
+    /// </summary>
+    private void DisablePhysicsCollider()
+    {
+        if (_physicsCollider != null)
+            _physicsCollider.enabled = false;
+    }
+
+    // ── Player freeze helpers ─────────────────────────────────────────────────
+
+    private void FreezePlayerAt(PlayerIndex player)
+    {
+        GameObject fish = PowerUpManager.Instance?.GetFish(player);
+        if (fish == null) return;
+
+        // FOVHighlightable is guaranteed on every fish root — stops the fish following the FOV.
+        FOVHighlightable fovCtrl = fish.GetComponent<FOVHighlightable>();
+        fovCtrl?.LockMovement();
+
+        // FishFOVController is optional — provides smooth movement to the stand position.
+        // If not present (fish uses base FOVHighlightable directly), the lock above is enough.
+        FishFOVController fishCtrl = fish.GetComponent<FishFOVController>()
+                                  ?? fish.GetComponentInChildren<FishFOVController>();
+        if (fishCtrl != null)
+        {
+            Vector3 target = _standPosition != null ? _standPosition.position : fish.transform.position;
+            fishCtrl.SetOverrideTarget(target);
+        }
+    }
+
+    private void UnfreezePlayer(PlayerIndex player)
+    {
+        GameObject fish = PowerUpManager.Instance?.GetFish(player);
+        if (fish == null) return;
+
+        fish.GetComponent<FOVHighlightable>()?.UnlockMovement();
+
+        FishFOVController fishCtrl = fish.GetComponent<FishFOVController>()
+                                  ?? fish.GetComponentInChildren<FishFOVController>();
+        fishCtrl?.ClearMovementOverride();
     }
 
     // ── Registration ──────────────────────────────────────────────────────────
@@ -130,37 +272,13 @@ public class ProblemObject : FOVHighlightable
 
     private void UpdateVisuals()
     {
+        _visuals?.Refresh(State);
+
         if (_definition == null) return;
 
-        switch (State)
-        {
-            case ProblemState.Idle:
-                SetMaterialColor(_definition.idleColor);
-                break;
-            case ProblemState.Found:
-                SetMaterialColor(_definition.foundColor);
-                PlaySound(_definition.foundSound);
-                break;
-            case ProblemState.Fixed:
-                SetMaterialColor(_definition.minimapFixedColor);
-                break;
-            case ProblemState.Broken:
-                SetMaterialColor(_definition.minimapBrokenColor);
-                break;
-        }
-    }
-
-    private IEnumerator DespawnAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        ProblemManager.Instance?.OnProblemDespawned(this, _spawnPocket);
-        Destroy(gameObject);
-    }
-
-    private void PlaySound(AudioClip clip)
-    {
-        if (_audioSource != null && clip != null)
-            _audioSource.PlayOneShot(clip);
+        // Found sound plays here; fix/break sounds play in TryFix/TryBreak.
+        if (State == ProblemState.Found)
+            SoundManager.Instance?.PlayAt(_definition.foundSound, transform.position);
     }
 
 #if UNITY_EDITOR

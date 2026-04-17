@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Break
   m_EditorClassIdentifier: 
   displayName: Power-Up
-  outlineColor: {r: 0, g: 0.8980392, b: 1, a: 1}
+  outlineColor: {r: 0.8773585, g: 0.10510688, b: 0.028969401, a: 1}
   role: 2
   activeDuration: 3
   fishColor: {r: 0, g: 0.8993242, b: 1, a: 1}

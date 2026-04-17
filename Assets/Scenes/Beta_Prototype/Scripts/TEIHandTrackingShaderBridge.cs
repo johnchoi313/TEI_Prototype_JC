@@ -10,6 +10,14 @@ public class TEIHandTrackingShaderBridge : MonoBehaviour
     [Header("Gesture Source")]
     [SerializeField] private TEIHandGestureInterpreter gestures;
 
+    [Header("Thumb Indicator")]
+    [Tooltip("Drag the TEIHandTrackingRunner here so we can read per-landmark thumb tip positions.")]
+    [SerializeField] private TEIHandTrackingRunner _runner;
+    [Tooltip("Smoothing speed for the thumb icon orbit animation (matches radiusSmoothing feel at 8).")]
+    [SerializeField] private float _thumbSmoothSpeed = 8f;
+    [Tooltip("Max UV-space offset from palm to thumb before clamping. Constrains the icon arc range (~10° sweep).")]
+    [SerializeField, Range(0f, 0.3f)] private float _thumbMaxOffsetUV = 0.12f;
+
     [Header("Target")]
     [SerializeField] private Graphic targetGraphic;
 
@@ -71,6 +79,10 @@ public class TEIHandTrackingShaderBridge : MonoBehaviour
     private float leftPulse;
     private float rightPulse;
 
+    // Thumb indicator offsets (UV-space direction from palm anchor to thumb tip, pre-flip)
+    private Vector2 _smoothedLeftThumbOffset;
+    private Vector2 _smoothedRightThumbOffset;
+
     // ── Shader property IDs ───────────────────────────────────────────────────
 
     private static readonly int Hand1PosID    = Shader.PropertyToID("_Hand1Pos");
@@ -91,6 +103,9 @@ public class TEIHandTrackingShaderBridge : MonoBehaviour
     private static readonly int Fist1ColorID    = Shader.PropertyToID("_Fist1Color");
     private static readonly int Fist2ColorID    = Shader.PropertyToID("_Fist2Color");
     private static readonly int MergeProgressID = Shader.PropertyToID("_MergeProgress");
+
+    private static readonly int Hand1ThumbOffsetID = Shader.PropertyToID("_Hand1ThumbOffset");
+    private static readonly int Hand2ThumbOffsetID = Shader.PropertyToID("_Hand2ThumbOffset");
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -140,6 +155,10 @@ public class TEIHandTrackingShaderBridge : MonoBehaviour
         runtimeMaterial.SetFloat(Hand2FistHeldID, 0f);
         runtimeMaterial.SetFloat(Hand1PulseID, 0f);
         runtimeMaterial.SetFloat(Hand2PulseID, 0f);
+
+        // Thumb indicator initialisation — start with zero offset (icon sits at rim top)
+        runtimeMaterial.SetVector(Hand1ThumbOffsetID, Vector2.zero);
+        runtimeMaterial.SetVector(Hand2ThumbOffsetID, Vector2.zero);
     }
 
     private void Update()
@@ -152,6 +171,7 @@ public class TEIHandTrackingShaderBridge : MonoBehaviour
 
         UpdateRadii();
         UpdateGestureVisuals();
+        UpdateThumbOffsets();
     }
 
     // ── Hand position + active/ghost ──────────────────────────────────────────
@@ -333,6 +353,64 @@ public class TEIHandTrackingShaderBridge : MonoBehaviour
         runtimeMaterial.SetFloat(Hand2FistHeldID, 0f);
         runtimeMaterial.SetFloat(Hand1PulseID, 0f);
         runtimeMaterial.SetFloat(Hand2PulseID, 0f);
+    }
+
+    // ── Thumb indicator ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Computes the UV-space offset from each hand's palm anchor (landmark 9, middle MCP)
+    /// to its thumb tip (landmark 4). This offset drives the thumb icon orbit on the FOV rim.
+    ///
+    /// Landmark 9 (middle MCP) is the most geometrically stable palm point — it doesn't
+    /// swing with wrist rotation the way landmark 0 (wrist) does, keeping the icon
+    /// anchored relative to the hand rather than the forearm.
+    ///
+    /// The offset is clamped to _thumbMaxOffsetUV before smoothing, which constrains the
+    /// icon's arc to a ~10° sweep regardless of how far the thumb extends.
+    /// </summary>
+    private void UpdateThumbOffsets()
+    {
+        _smoothedLeftThumbOffset  = ComputeThumbOffset(isLeft: true,  _smoothedLeftThumbOffset);
+        _smoothedRightThumbOffset = ComputeThumbOffset(isLeft: false, _smoothedRightThumbOffset);
+
+        // Apply the same flip transform used for main hand positions
+        Vector2 leftSend  = _smoothedLeftThumbOffset;
+        Vector2 rightSend = _smoothedRightThumbOffset;
+        if (flipX) { leftSend.x  = -leftSend.x;  rightSend.x = -rightSend.x; }
+        if (flipY) { leftSend.y  = -leftSend.y;  rightSend.y = -rightSend.y; }
+
+        runtimeMaterial.SetVector(Hand1ThumbOffsetID, leftSend);
+        runtimeMaterial.SetVector(Hand2ThumbOffsetID, rightSend);
+    }
+
+    private Vector2 ComputeThumbOffset(bool isLeft, Vector2 currentSmoothed)
+    {
+        bool hasHand = isLeft ? filter.HasLeftHand : filter.HasRightHand;
+        Vector3[] landmarks = null;
+
+        if (_runner != null && hasHand)
+            landmarks = isLeft ? _runner.LeftHandLandmarks : _runner.RightHandLandmarks;
+
+        Vector2 target = Vector2.zero;
+
+        if (landmarks != null && landmarks.Length > 9)
+        {
+            // Thumb tip (4) relative to middle MCP palm anchor (9), in raw MediaPipe UV space.
+            // The relative offset is coordinate-space agnostic — any global flip applied to both
+            // points cancels out, so the direction correctly maps to finger anatomy.
+            Vector2 thumbTip   = new Vector2(landmarks[4].x, landmarks[4].y);
+            Vector2 palmAnchor = new Vector2(landmarks[9].x, landmarks[9].y);
+            Vector2 rawOffset  = thumbTip - palmAnchor;
+
+            // Clamp magnitude to constrain the icon arc to a subtle range
+            if (rawOffset.sqrMagnitude > _thumbMaxOffsetUV * _thumbMaxOffsetUV)
+                rawOffset = rawOffset.normalized * _thumbMaxOffsetUV;
+
+            target = rawOffset;
+        }
+        // When hand is absent, target stays Vector2.zero — icon drifts back to neutral on rim
+
+        return Vector2.Lerp(currentSmoothed, target, _thumbSmoothSpeed * Time.deltaTime);
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

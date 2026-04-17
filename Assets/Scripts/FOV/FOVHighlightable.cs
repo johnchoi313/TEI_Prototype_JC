@@ -41,33 +41,61 @@ public class FOVHighlightable : MonoBehaviour
 
     [Header("Attraction Settings")]
     [Tooltip("How quickly the object accelerates toward the FOV center (default / no noise).")]
-    [SerializeField] private float smoothTime      = 1.0f;
+    [SerializeField] protected float smoothTime      = 1.0f;
 
     [Tooltip("World-space distance from FOV center at which we consider the object 'arrived'.")]
     [SerializeField] private float arrivalThreshold = 0.1f;
 
     [Tooltip("Maximum movement speed in world units/sec (default / no noise).")]
-    [SerializeField] private float maxSpeed = 3f;
+    [SerializeField] protected float maxSpeed = 3f;
 
     [Header("Noise Battery Modulation")]
     [Tooltip("Read from AmbientNoiseSampler to scale speed with ambient noise level.")]
-    [SerializeField] private bool useNoiseBattery = true;
+    [SerializeField] protected bool useNoiseBattery = true;
 
     [Tooltip("smoothTime when battery is fully charged (fastest). Lower = snappier.")]
-    [SerializeField] private float fastSmoothTime = 0.15f;
+    [SerializeField] protected float fastSmoothTime = 0.15f;
 
     [Tooltip("maxSpeed when battery is fully charged.")]
-    [SerializeField] private float fastMaxSpeed   = 10f;
+    [SerializeField] protected float fastMaxSpeed   = 10f;
 
     // ── State (readable by subclasses) ────────────────────────────────────────
 
     public FOVAttractionState AttractionState { get; private set; } = FOVAttractionState.Idle;
     public FOVOwner RespondTo => respondTo;
 
+    /// <summary>
+    /// When true, ApplyMovement is NOT called from Update — the object stops following the FOV.
+    /// Set by ProblemObject during interaction animations via LockMovement() / UnlockMovement().
+    /// FishFOVController.FixedUpdate also pins the physics body in place while locked.
+    /// </summary>
+    public bool MovementLocked { get; private set; }
+
+    /// <summary>Stops this object from following the FOV. Safe to call from any script.</summary>
+    public void LockMovement()   => MovementLocked = true;
+
+    /// <summary>Resumes normal FOV-following after LockMovement was called.</summary>
+    public void UnlockMovement() => MovementLocked = false;
+
     [Header("Debug (read-only in Play Mode)")]
     [SerializeField] private float _dbgBattery;
     [SerializeField] private float _dbgSmoothTime;
     [SerializeField] private float _dbgMaxSpeed;
+
+    /// <summary>
+    /// Current effective smooth time after noise-battery modulation.
+    /// Readable by subclasses (e.g. FishFOVController) so they can replicate
+    /// the same movement speed without duplicating the battery interpolation logic.
+    /// Updated each frame inside ApplyMovement.
+    /// </summary>
+    protected float CurrentSmoothTime { get; private set; }
+
+    /// <summary>
+    /// Current effective max speed after noise-battery modulation.
+    /// Readable by subclasses (e.g. FishFOVController).
+    /// Updated each frame inside ApplyMovement.
+    /// </summary>
+    protected float CurrentMaxSpeed { get; private set; }
 
     /// <summary>World-space center of the FOV currently attracting this object (at this object's Z). Zero if idle.</summary>
     protected Vector3 ActiveFOVCenter { get; private set; }
@@ -124,10 +152,12 @@ public class FOVHighlightable : MonoBehaviour
                 // when objects sit at different Z depths than gamePlaneZ.
                 ActiveFOVCenter = ViewportToWorldAtObjectZ(fovViewport, activeCam);
 
-                // Smooth movement toward center — only during active gameplay.
-                // FOV detection (color, highlights, events) continues in all states.
-                bool canMove = GameManager.Instance == null ||
-                               GameManager.Instance.State == GameState.Playing;
+                // Smooth movement toward center — only during active gameplay and when not
+                // locked by an interaction animation. FOV detection (color, highlights, events)
+                // continues in all states regardless of the movement lock.
+                bool canMove = !MovementLocked &&
+                               (GameManager.Instance == null ||
+                                GameManager.Instance.State == GameState.Playing);
                 if (canMove) ApplyMovement(ActiveFOVCenter);
                 WhileInFOVRange(ActiveFOVCenter, activeHand.WorldRadius);
 
@@ -191,6 +221,11 @@ public class FOVHighlightable : MonoBehaviour
 
         _dbgSmoothTime = currentSmoothTime;
         _dbgMaxSpeed   = currentMaxSpeed;
+
+        // Expose to subclasses so they can replicate the same speed without
+        // duplicating the battery interpolation logic.
+        CurrentSmoothTime = currentSmoothTime;
+        CurrentMaxSpeed   = currentMaxSpeed;
 
         transform.position = Vector3.SmoothDamp(
             transform.position,

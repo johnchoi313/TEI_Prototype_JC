@@ -722,6 +722,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   filter: {fileID: 7279632548121295307}
   gestures: {fileID: 5766527985063779224}
+  _runner: {fileID: 0}
+  _thumbSmoothSpeed: 8
+  _thumbMaxOffsetUV: 0.12
   targetGraphic: {fileID: 8035512445766763315}
   flipX: 0
   flipY: 1
@@ -900,7 +903,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   p1Camera: {fileID: 0}
   p2Camera: {fileID: 0}
-  splitThreshold: 8
+  splitThreshold: 6
   mergeThreshold: 6
   transitionDuration: 0.5
 --- !u!114 &3965903342728302641

@@ -14,7 +14,8 @@ using UnityEngine.UI;
 ///
 /// FOV ICON
 ///   Position  — world position of the hand (or last known ghost position)
-///   Size      — diameter derived from world-space FOV radius (its just the radius, no need to *2)
+///   Size      — diameter derived from world-space FOV radius
+///   Scale     - a separate ratio to multiply the world given number
 ///   Alpha     — full when the hand is actively tracked, _ghostAlpha when ghosted
 ///   Hidden    — when the hand state is fully inactive (never been seen)
 ///
@@ -34,12 +35,21 @@ public class MinimapPlayerTracker : MonoBehaviour
     [SerializeField] private Image _fovIcon;
 
     [Header("Appearance")]
-    [Tooltip("Base color used when no power-up is active.")]
-    [SerializeField] private Color _defaultColor = Color.white;
-
-    [Tooltip("Alpha applied to both icons when the hand is in ghost state (last known position).")]
+    [Tooltip("Alpha multiplier applied to both icons when the hand is in ghost state (last known position).")]
     [Range(0f, 1f)]
     [SerializeField] private float _ghostAlpha = 0.35f;
+
+    [Header("Scale")]
+    [Tooltip("Diameter of the character icon expressed in world units. " +
+             "Passed through WorldRadiusToMap so it scales with the map and stays " +
+             "proportional to the FOV ring. Tune this until the icon feels right-sized.")]
+    [SerializeField] private float _characterIconWorldSize = 1.5f;
+    [SerializeField] private float _fovScaleRatio = 1f;
+
+    [Tooltip("Degrees added to the icon's Z rotation to compensate for the sprite's natural orientation. " +
+             "0 = sprite points right at rest. -90 = sprite points up at rest (most common). " +
+             "Tune in Play mode until the icon matches the fish's heading.")]
+    [SerializeField] private float _spriteRotationOffset = 0f;
 
     // ── Runtime ───────────────────────────────────────────────────────────────
 
@@ -47,7 +57,8 @@ public class MinimapPlayerTracker : MonoBehaviour
     private PlayerIndex       _playerIndex;
     private bool              _initialized;
 
-    private Transform _cachedCharacterTransform;
+    private Transform    _cachedCharacterTransform;
+    private FishAnimator _cachedAnimator;
 
     // ── Called by MinimapController ───────────────────────────────────────────
 
@@ -83,7 +94,14 @@ public class MinimapPlayerTracker : MonoBehaviour
         {
             GameObject playerGO = PlayerManager.Instance.GetPlayerInstance(_playerIndex);
             if (playerGO != null)
+            {
                 _cachedCharacterTransform = playerGO.transform;
+
+                // GetComponent checks the root only; GetComponentInChildren catches it anywhere in the hierarchy.
+                _cachedAnimator = playerGO.GetComponent<FishAnimator>()
+                               ?? playerGO.GetComponentInChildren<FishAnimator>();
+
+            }
         }
 
         if (_cachedCharacterTransform == null)
@@ -94,6 +112,23 @@ public class MinimapPlayerTracker : MonoBehaviour
 
         _characterIcon.gameObject.SetActive(true);
         _characterIcon.rectTransform.anchoredPosition = _map.WorldToMap(_cachedCharacterTransform.position);
+
+        // Mirror and rotate the icon — carbon copy of FishAnimator's mesh pivot logic.
+        // In 3D the Y=180 flip mirrors the sprite; in 2D UI the equivalent is localScale.x = -1.
+        // FacingZAngle gives the raw Z (clamped [-90,90]); the flip handles left-hemisphere heading.
+        if (_cachedAnimator != null)
+        {
+            float z = _cachedAnimator.FacingZAngle + _spriteRotationOffset;
+            bool  flip = _cachedAnimator.IsFacingLeft;
+            _characterIcon.rectTransform.localEulerAngles = new Vector3(0f, 0f, z);
+            _characterIcon.rectTransform.localScale       = new Vector3(flip ? -1f : 1f, 1f, 1f);
+
+        }
+
+        // Scale the icon in world-proportional pixels (same pipeline as the FOV ring).
+        float iconSize = _map.WorldRadiusToMap(_characterIconWorldSize);
+        _characterIcon.rectTransform.sizeDelta = Vector2.one * iconSize;
+
         _characterIcon.color = CurrentColor(isGhost: false);
     }
 
@@ -121,10 +156,14 @@ public class MinimapPlayerTracker : MonoBehaviour
         _fovIcon.rectTransform.anchoredPosition = _map.WorldToMap(state.WorldPosition);
 
 
-        float radius = _map.WorldRadiusToMap(state.WorldRadius);
-        _fovIcon.rectTransform.sizeDelta = Vector2.one * radius;
+        float diameter = _map.WorldRadiusToMap(state.WorldRadius) * 2;
+        _fovIcon.rectTransform.sizeDelta = Vector2.one * diameter * _fovScaleRatio;
 
-        _fovIcon.color = CurrentColor(isGhost: state.IsGhost);
+        // FOV ring is always white (ghost alpha still applies).
+        // If you add a power-up-colored outline sprite later, drive it with CurrentColor(state.IsGhost) instead.
+        Color fovColor = Color.white;
+        if (state.IsGhost) fovColor.a *= _ghostAlpha;
+        _fovIcon.color = fovColor;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -135,21 +174,13 @@ public class MinimapPlayerTracker : MonoBehaviour
     /// </summary>
     private Color CurrentColor(bool isGhost)
     {
-        Color baseColor = _defaultColor;
-
-        if (PowerUpManager.Instance != null)
-        {
-            bool powerUpActive = _playerIndex == PlayerIndex.Player1
-                ? PowerUpManager.Instance.P1Active
-                : PowerUpManager.Instance.P2Active;
-
-            if (powerUpActive)
-            {
-                baseColor = _playerIndex == PlayerIndex.Player1
-                    ? PowerUpManager.Instance.P1PowerUpColor
-                    : PowerUpManager.Instance.P2PowerUpColor;
-            }
-        }
+        // Always use the power-up color so the icon reflects the current power-up
+        // assignment at all times, not just when it's actively firing.
+        Color baseColor = PowerUpManager.Instance != null
+            ? (_playerIndex == PlayerIndex.Player1
+                ? PowerUpManager.Instance.P1PowerUpColor
+                : PowerUpManager.Instance.P2PowerUpColor)
+            : Color.white;
 
         if (isGhost)
             baseColor.a *= _ghostAlpha;
