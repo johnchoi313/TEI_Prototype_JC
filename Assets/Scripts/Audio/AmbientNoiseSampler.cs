@@ -132,7 +132,8 @@ public class AmbientNoiseSampler : MonoBehaviour
         _samples  = new float[sampleWindow];
         IsRunning = true;
 
-        Debug.Log($"[AmbientNoiseSampler] Mic started: '{_activeDevice}' @ {sampleRate}Hz", this);
+        int selectedIndex = System.Array.IndexOf(Microphone.devices, _activeDevice);
+        Debug.Log($"[AmbientNoiseSampler] Selected mic [{selectedIndex}]: \"{_activeDevice}\" @ {sampleRate}Hz", this);
     }
 
     private void StopMicrophone()

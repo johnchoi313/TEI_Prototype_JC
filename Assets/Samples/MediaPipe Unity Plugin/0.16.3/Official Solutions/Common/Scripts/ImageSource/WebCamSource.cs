@@ -133,6 +133,7 @@ namespace Mediapipe.Unity
       if (availableSources != null && availableSources.Length > 1)
       {
         webCamDevice = availableSources[1];
+        Debug.Log($"[WebCamSource] Selected webcam [1]: \"{availableSources[1].name}\" (front-facing: {availableSources[1].isFrontFacing})");
       }
     }
 
