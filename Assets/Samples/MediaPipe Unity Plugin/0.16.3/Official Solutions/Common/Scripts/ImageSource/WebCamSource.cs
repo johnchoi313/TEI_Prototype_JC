@@ -130,9 +130,9 @@ namespace Mediapipe.Unity
 
       availableSources = WebCamTexture.devices;
 
-      if (availableSources != null && availableSources.Length > 0)
+      if (availableSources != null && availableSources.Length > 1)
       {
-        webCamDevice = availableSources[0];
+        webCamDevice = availableSources[1];
       }
     }
 

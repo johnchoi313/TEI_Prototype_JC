@@ -25,8 +25,8 @@ public class AmbientNoiseSampler : MonoBehaviour
     public static AmbientNoiseSampler Instance { get; private set; }
 
     [Header("Microphone")]
-    [Tooltip("Leave blank to use the system default microphone.")]
-    [SerializeField] private string microphoneDevice = null;
+    [Tooltip("Leave blank to use the system default microphone. Check DeviceLogger in Console on Start to see device names and indices.")]
+    public string microphoneDevice = null;
     [SerializeField] private int sampleRate = 44100;
 
     [Header("Noise Detection")]
@@ -115,7 +115,7 @@ public class AmbientNoiseSampler : MonoBehaviour
         // Prefer the Inspector override; fall back to devices[0] (system default on Mac/PC).
         _activeDevice = (microphoneDevice != null && microphoneDevice.Length > 0)
             ? microphoneDevice
-            : Microphone.devices[0];
+            : Microphone.devices[1];
 
         Debug.Log($"[AmbientNoiseSampler] Available mics: [{string.Join(", ", Microphone.devices)}]", this);
 
