@@ -80,6 +80,12 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     private SkinnedMeshRenderer _faceSMR;
     private const int           NumBlendshapes = (int)Brekel_blendshape_name.numBlendshapes;
 
+    /// <summary>
+    /// Returns the inverse bind-pose rotation for the given joint index.
+    /// Used by HumanoidMapper to extract the motion delta from incoming data.
+    /// </summary>
+    public Quaternion GetBindPoseInverse(int jointIndex) => _offsets[jointIndex];
+
 
     // =========================================================================
     //  Unity lifecycle

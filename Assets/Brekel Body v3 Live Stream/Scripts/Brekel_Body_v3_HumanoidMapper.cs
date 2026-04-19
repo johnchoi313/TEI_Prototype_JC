@@ -5,13 +5,26 @@ using UnityEngine;
 //  Brekel_Body_v3_HumanoidMapper
 //
 //  Drives any Unity Humanoid-rigged character from a Brekel Body v3 stream.
-//  Bones are resolved at Start() via animator.GetBoneTransform(HumanBodyBones)
-//  — works on any humanoid model regardless of bone names.
+//  Bones are resolved at Start() via animator.GetBoneTransform(HumanBodyBones).
 //
-//  Requires: character GameObject must have an Animator configured as Humanoid.
+//  RETARGETING STRATEGY
+//  --------------------
+//  The DefaultMapper works by storing Inverse(bone.localRotation) at start
+//  (the bind-pose inverse) and applying:
 //
-//  Uses the same offset * rotation approach as DefaultMapper:
-//    localRotation = Quaternion.Inverse(bindPoseRot) * incomingRot
+//    localRotation = defaultBindInverse * incomingRot
+//
+//  That "defaultBindInverse * incomingRot" is the DELTA — how much the joint
+//  rotated away from the DefaultMapper rig's T-pose.
+//
+//  We retarget that same delta onto the humanoid rig by applying it on top of
+//  the humanoid's own bind-pose rotation:
+//
+//    humanoid.localRotation = humanoidBindRot * delta
+//                           = humanoidBindRot * (defaultBindInverse * incomingRot)
+//
+//  This requires a reference to a DefaultMapper so we can read its bind-pose
+//  inverses.  Both rigs must be tracking the same body ID.
 // =============================================================================
 public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
 {
@@ -23,8 +36,13 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
     public Brekel_Body_v3_Receiver receiver;
 
     [Header("Character")]
-    [Tooltip("GameObject with a Humanoid Animator/Avatar — bones are resolved automatically")]
+    [Tooltip("GameObject with a Humanoid Animator/Avatar — bones resolved automatically")]
     public GameObject character;
+
+    [Header("Retargeting Source")]
+    [Tooltip("DefaultMapper whose bind-pose is used as the motion reference. " +
+             "Must be tracking the same body ID.")]
+    public Brekel_Body_v3_DefaultMapper defaultMapper;
 
     [Header("Mapping Settings")]
     [Tooltip("Which body ID from the stream drives this character")]
@@ -35,7 +53,7 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
     public SkinnedMeshRenderer faceMesh;
 
     // -------------------------------------------------------------------------
-    //  Internal — resolved at Start() via HumanBodyBones
+    //  Bone transforms — resolved at Start() via HumanBodyBones
     // -------------------------------------------------------------------------
     private Transform _hips, _spine, _chest, _neck, _head;
     private Transform _upperLeg_L, _lowerLeg_L, _foot_L;
@@ -43,8 +61,10 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
     private Transform _collar_L, _upperArm_L, _foreArm_L, _hand_L;
     private Transform _collar_R, _upperArm_R, _foreArm_R, _hand_R;
 
-    private Quaternion[] _offsets      = new Quaternion[(int)Brekel_joint_name_v3.numJoints];
-    private const int    NumBlendshapes = (int)Brekel_blendshape_name.numBlendshapes;
+    // Humanoid rig's own bind-pose rotations (stored at Start)
+    private Quaternion[] _humanoidBind = new Quaternion[(int)Brekel_joint_name_v3.numJoints];
+
+    private const int NumBlendshapes = (int)Brekel_blendshape_name.numBlendshapes;
 
 
     // =========================================================================
@@ -59,9 +79,16 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
             return;
         }
 
+        if (defaultMapper == null)
+        {
+            Debug.LogError("[HumanoidMapper] No DefaultMapper assigned — cannot retarget.");
+            enabled = false;
+            return;
+        }
+
         if (!ResolveBones()) { enabled = false; return; }
 
-        StoreOffsets();
+        BakeHumanoidBind();
     }
 
     void Update()
@@ -74,25 +101,25 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
         BrekelBodyFrame body = receiver.GetBody(bodyID);
         if (body == null) return;
 
-        Rotate(_hips,       Brekel_joint_name_v3.waist,      body);
-        Rotate(_spine,      Brekel_joint_name_v3.spine,      body);
-        Rotate(_chest,      Brekel_joint_name_v3.chest,      body);
-        Rotate(_neck,       Brekel_joint_name_v3.neck,       body);
-        Rotate(_head,       Brekel_joint_name_v3.head,       body);
-        Rotate(_upperLeg_L, Brekel_joint_name_v3.upperLeg_L, body);
-        Rotate(_lowerLeg_L, Brekel_joint_name_v3.lowerLeg_L, body);
-        Rotate(_foot_L,     Brekel_joint_name_v3.foot_L,     body);
-        Rotate(_upperLeg_R, Brekel_joint_name_v3.upperLeg_R, body);
-        Rotate(_lowerLeg_R, Brekel_joint_name_v3.lowerLeg_R, body);
-        Rotate(_foot_R,     Brekel_joint_name_v3.foot_R,     body);
-        Rotate(_collar_L,   Brekel_joint_name_v3.collar_L,   body);
-        Rotate(_upperArm_L, Brekel_joint_name_v3.upperArm_L, body);
-        Rotate(_foreArm_L,  Brekel_joint_name_v3.foreArm_L,  body);
-        Rotate(_hand_L,     Brekel_joint_name_v3.hand_L,     body);
-        Rotate(_collar_R,   Brekel_joint_name_v3.collar_R,   body);
-        Rotate(_upperArm_R, Brekel_joint_name_v3.upperArm_R, body);
-        Rotate(_foreArm_R,  Brekel_joint_name_v3.foreArm_R,  body);
-        Rotate(_hand_R,     Brekel_joint_name_v3.hand_R,     body);
+        Retarget(_hips,       Brekel_joint_name_v3.waist,      body);
+        Retarget(_spine,      Brekel_joint_name_v3.spine,      body);
+        Retarget(_chest,      Brekel_joint_name_v3.chest,      body);
+        Retarget(_neck,       Brekel_joint_name_v3.neck,       body);
+        Retarget(_head,       Brekel_joint_name_v3.head,       body);
+        Retarget(_upperLeg_L, Brekel_joint_name_v3.upperLeg_L, body);
+        Retarget(_lowerLeg_L, Brekel_joint_name_v3.lowerLeg_L, body);
+        Retarget(_foot_L,     Brekel_joint_name_v3.foot_L,     body);
+        Retarget(_upperLeg_R, Brekel_joint_name_v3.upperLeg_R, body);
+        Retarget(_lowerLeg_R, Brekel_joint_name_v3.lowerLeg_R, body);
+        Retarget(_foot_R,     Brekel_joint_name_v3.foot_R,     body);
+        Retarget(_collar_L,   Brekel_joint_name_v3.collar_L,   body);
+        Retarget(_upperArm_L, Brekel_joint_name_v3.upperArm_L, body);
+        Retarget(_foreArm_L,  Brekel_joint_name_v3.foreArm_L,  body);
+        Retarget(_hand_L,     Brekel_joint_name_v3.hand_L,     body);
+        Retarget(_collar_R,   Brekel_joint_name_v3.collar_R,   body);
+        Retarget(_upperArm_R, Brekel_joint_name_v3.upperArm_R, body);
+        Retarget(_foreArm_R,  Brekel_joint_name_v3.foreArm_R,  body);
+        Retarget(_hand_R,     Brekel_joint_name_v3.hand_R,     body);
 
         ApplyBlendshapes(body);
     }
@@ -136,30 +163,19 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
         _foreArm_R  = anim.GetBoneTransform(HumanBodyBones.RightLowerArm);
         _hand_R     = anim.GetBoneTransform(HumanBodyBones.RightHand);
 
-        // Log a summary so you can verify what resolved and what didn't
         var sb = new System.Text.StringBuilder();
         sb.AppendLine($"[HumanoidMapper] Bones resolved for '{character.name}':");
         void Log(string label, Transform t) =>
             sb.AppendLine($"  {label,-14} → {(t != null ? t.name : "(null — not in avatar)")}");
-
-        Log("hips",       _hips);
-        Log("spine",      _spine);
-        Log("chest",      _chest);
-        Log("neck",       _neck);
-        Log("head",       _head);
-        Log("upperLeg_L", _upperLeg_L);
-        Log("lowerLeg_L", _lowerLeg_L);
-        Log("foot_L",     _foot_L);
-        Log("upperLeg_R", _upperLeg_R);
-        Log("lowerLeg_R", _lowerLeg_R);
-        Log("foot_R",     _foot_R);
-        Log("collar_L",   _collar_L);
-        Log("upperArm_L", _upperArm_L);
-        Log("foreArm_L",  _foreArm_L);
-        Log("hand_L",     _hand_L);
-        Log("collar_R",   _collar_R);
-        Log("upperArm_R", _upperArm_R);
-        Log("foreArm_R",  _foreArm_R);
+        Log("hips",       _hips);       Log("spine",      _spine);
+        Log("chest",      _chest);      Log("neck",       _neck);
+        Log("head",       _head);       Log("upperLeg_L", _upperLeg_L);
+        Log("lowerLeg_L", _lowerLeg_L); Log("foot_L",     _foot_L);
+        Log("upperLeg_R", _upperLeg_R); Log("lowerLeg_R", _lowerLeg_R);
+        Log("foot_R",     _foot_R);     Log("collar_L",   _collar_L);
+        Log("upperArm_L", _upperArm_L); Log("foreArm_L",  _foreArm_L);
+        Log("hand_L",     _hand_L);     Log("collar_R",   _collar_R);
+        Log("upperArm_R", _upperArm_R); Log("foreArm_R",  _foreArm_R);
         Log("hand_R",     _hand_R);
         Debug.Log(sb.ToString());
 
@@ -168,28 +184,9 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
 
 
     // =========================================================================
-    //  Apply
+    //  Bake humanoid bind-pose rotations (stored at Start, before any motion)
     // =========================================================================
-    private void Rotate(Transform t, Brekel_joint_name_v3 joint, BrekelBodyFrame body)
-    {
-        if (t == null) return;
-        int idx = (int)joint;
-        t.localRotation = _offsets[idx] * body.joints[idx].rotation;
-    }
-
-    private void ApplyBlendshapes(BrekelBodyFrame body)
-    {
-        if (faceMesh == null) return;
-        int count = Mathf.Min(faceMesh.sharedMesh.blendShapeCount, NumBlendshapes);
-        for (int i = 0; i < count; i++)
-            faceMesh.SetBlendShapeWeight(i, body.blendshapes[i] * 100f);
-    }
-
-
-    // =========================================================================
-    //  Rest-pose offset baking
-    // =========================================================================
-    private void StoreOffsets()
+    private void BakeHumanoidBind()
     {
         Bake(_hips,       Brekel_joint_name_v3.waist);
         Bake(_spine,      Brekel_joint_name_v3.spine);
@@ -215,6 +212,40 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
     private void Bake(Transform t, Brekel_joint_name_v3 joint)
     {
         if (t != null)
-            _offsets[(int)joint] = Quaternion.Inverse(t.localRotation);
+            _humanoidBind[(int)joint] = t.localRotation;
+    }
+
+
+    // =========================================================================
+    //  Retarget one bone
+    //
+    //  delta = defaultBindInverse * incomingRot
+    //        = "how much this joint moved from the DefaultMapper rig's T-pose"
+    //
+    //  humanoid.localRotation = humanoidBindRot * delta
+    //        = apply that same delta on top of humanoid's own T-pose
+    // =========================================================================
+    private void Retarget(Transform t, Brekel_joint_name_v3 joint, BrekelBodyFrame body)
+    {
+        if (t == null) return;
+        int idx = (int)joint;
+
+        Quaternion defaultBindInv = defaultMapper.GetBindPoseInverse(idx);
+        Quaternion incoming       = body.joints[idx].rotation;
+
+        Quaternion delta = defaultBindInv * incoming;
+        t.localRotation  = _humanoidBind[idx] * delta;
+    }
+
+
+    // =========================================================================
+    //  Blendshapes
+    // =========================================================================
+    private void ApplyBlendshapes(BrekelBodyFrame body)
+    {
+        if (faceMesh == null) return;
+        int count = Mathf.Min(faceMesh.sharedMesh.blendShapeCount, NumBlendshapes);
+        for (int i = 0; i < count; i++)
+            faceMesh.SetBlendShapeWeight(i, body.blendshapes[i] * 100f);
     }
 }

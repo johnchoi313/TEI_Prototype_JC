@@ -843,7 +843,7 @@ GameObject:
   m_Component:
   - component: {fileID: 84553355560318200}
   m_Layer: 0
-  m_Name: example_skeleton_with_face
+  m_Name: Brekel Body Default
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3549,6 +3549,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   receiver: {fileID: 6029612542203540319}
   character: {fileID: 8519499414813800420}
+  defaultMapper: {fileID: 2529524753008417719}
   bodyID: 0
   faceMesh: {fileID: 0}
 --- !u!114 &6029612542203540319
