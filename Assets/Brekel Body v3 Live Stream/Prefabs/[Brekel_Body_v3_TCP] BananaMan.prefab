@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &3510614296983801274
+--- !u!1 &1108342504870731785
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,38 +8,38 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1260364460453153802}
-  - component: {fileID: 7005256788486240046}
+  - component: {fileID: 2351157825325301314}
+  - component: {fileID: 5655382878833712173}
   m_Layer: 0
-  m_Name: '[Brekel_Body_v3_TCP] Default'
+  m_Name: '[Brekel_Body_v3_TCP] BananaMan'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1260364460453153802
+--- !u!4 &2351157825325301314
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3510614296983801274}
+  m_GameObject: {fileID: 1108342504870731785}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2713203624592386967}
+  - {fileID: 9038873129940497276}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &7005256788486240046
+--- !u!114 &5655382878833712173
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3510614296983801274}
+  m_GameObject: {fileID: 1108342504870731785}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 91dbacf06744030409eab0bf47981441, type: 3}
@@ -49,117 +49,21 @@ MonoBehaviour:
   port: 8844
   mappings:
   - bodyID: 0
-    character: {fileID: 3381337999631577389}
+    character: {fileID: 8519499413895080390}
     faceMesh: {fileID: 0}
     applyPositionsToAll: 0
     lockRootPosition: 1
-    jointFlips:
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
-    - label: 
-      flipX: 0
-      flipY: 0
-      flipZ: 0
+    jointFlips: []
     animator: {fileID: 0}
     boneTransforms: []
     boneOffsets: []
---- !u!1001 &2462771009118063740
+--- !u!1001 &8861463686121804951
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 1260364460453153802}
+    m_TransformParent: {fileID: 2351157825325301314}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 81bb9eea30387e442899949a80011e55, type: 3}
       propertyPath: m_LocalPosition.x
@@ -205,22 +109,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: Banana Man
       objectReference: {fileID: 0}
-    - target: {fileID: 5866666021909216657, guid: 81bb9eea30387e442899949a80011e55, type: 3}
-      propertyPath: m_ApplyRootMotion
-      value: 0
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 81bb9eea30387e442899949a80011e55, type: 3}
---- !u!4 &2713203624592386967 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 81bb9eea30387e442899949a80011e55, type: 3}
-  m_PrefabInstance: {fileID: 2462771009118063740}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &3381337999631577389 stripped
+--- !u!1 &8519499413895080390 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 81bb9eea30387e442899949a80011e55, type: 3}
-  m_PrefabInstance: {fileID: 2462771009118063740}
+  m_PrefabInstance: {fileID: 8861463686121804951}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &9038873129940497276 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 81bb9eea30387e442899949a80011e55, type: 3}
+  m_PrefabInstance: {fileID: 8861463686121804951}
   m_PrefabAsset: {fileID: 0}
