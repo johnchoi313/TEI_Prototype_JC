@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: a1d9ba7810633444ebbe894e13beb72c
+timeCreated: 1524638990
+licenseType: Store
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 115731
+  packageName: Steampunk Submarine & Diver
+  packageVersion: 1.0
+  assetPath: Assets/DiverAndSubmarine/DiverAndSubmarine_Demo.unity
+  uploadId: 242392
