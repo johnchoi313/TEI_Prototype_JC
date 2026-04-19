@@ -132,12 +132,14 @@ public class MazeGenerator : MonoBehaviour
 
         InitGrid();
         RunPrims();
+        StampBorderRing();
 
         _mazeRoot = new GameObject("MazeRoot");
         _mazeRoot.transform.SetParent(transform);
         _mazeRoot.transform.localPosition = Vector3.zero;
 
         SpawnWalls();
+        SpawnBoundary();
         PlaceSpawnPoints();
         PlaceProblemPockets();
         FitCameraToMaze();
@@ -215,13 +217,13 @@ public class MazeGenerator : MonoBehaviour
 
     private void SetPassage(int c, int r)
     {
-        if (IsInterior(c, r))
+        if (InBounds(c, r))
             _grid[c, r] = CellType.Passage;
     }
 
     /// <summary>
     /// Adds the four axis-aligned neighbors (two steps away) that are still Wall
-    /// and inside the interior (not the border ring) to the frontier.
+    /// and inside the interior (not the outer ring) to the frontier.
     /// </summary>
     private void AddWallNeighborsToFrontier(int c, int r, List<Vector2Int> frontier)
     {
@@ -229,7 +231,7 @@ public class MazeGenerator : MonoBehaviour
         {
             int nc = c + dir.x * 2;
             int nr = r + dir.y * 2;
-            if (IsInterior(nc, nr) && _grid[nc, nr] == CellType.Wall)
+            if (InBounds(nc, nr) && IsInner(nc, nr) && _grid[nc, nr] == CellType.Wall)
             {
                 Vector2Int n = new Vector2Int(nc, nr);
                 if (!frontier.Contains(n))
@@ -245,10 +247,32 @@ public class MazeGenerator : MonoBehaviour
         {
             int nc = c + dir.x * 2;
             int nr = r + dir.y * 2;
-            if (IsInterior(nc, nr) && _grid[nc, nr] == CellType.Passage)
+            if (InBounds(nc, nr) && IsInner(nc, nr) && _grid[nc, nr] == CellType.Passage)
                 result.Add(new Vector2Int(nc, nr));
         }
         return result;
+    }
+
+    // Inner = not on the outer ring (the ring is always stamped back to Wall after carving).
+    private bool IsInner(int c, int r) => c > 0 && c < _columns - 1 && r > 0 && r < _rows - 1;
+
+    /// <summary>
+    /// After Prim's finishes, force the entire outer ring back to Wall regardless
+    /// of what the algorithm carved. This gives us a clean grid to spawn boundary
+    /// slabs from, without any per-cell border cubes.
+    /// </summary>
+    private void StampBorderRing()
+    {
+        for (int c = 0; c < _columns; c++)
+        {
+            _grid[c, 0]          = CellType.Wall;
+            _grid[c, _rows - 1]  = CellType.Wall;
+        }
+        for (int r = 0; r < _rows; r++)
+        {
+            _grid[0, r]           = CellType.Wall;
+            _grid[_columns - 1, r] = CellType.Wall;
+        }
     }
 
     private static Vector2Int[] CardinalDirections() => new[]
@@ -271,19 +295,15 @@ public class MazeGenerator : MonoBehaviour
         {
             for (int r = 0; r < _rows; r++)
             {
+                // Outer ring is handled by SpawnBoundary — skip it here.
+                if (!IsInner(c, r)) continue;
                 if (_grid[c, r] != CellType.Wall) continue;
 
-                // Only count in-bounds neighbours as wall connections.
-                // Out-of-bounds is open space (the border ring handles the edge), so
-                // border cells don't spuriously stretch into the boundary slab.
                 bool wallLeft  = InBounds(c - 1, r) && _grid[c - 1, r] == CellType.Wall;
                 bool wallRight = InBounds(c + 1, r) && _grid[c + 1, r] == CellType.Wall;
                 bool wallDown  = InBounds(c, r - 1) && _grid[c, r - 1] == CellType.Wall;
                 bool wallUp    = InBounds(c, r + 1) && _grid[c, r + 1] == CellType.Wall;
 
-                // Stretch an axis whenever there is a wall neighbour on that axis (either side).
-                // This ensures corners and T-junctions bridge the gap to their neighbours,
-                // while isolated or end-cap cells stay at thin.
                 float scaleX = (wallLeft || wallRight) ? _cellSize : thin;
                 float scaleY = (wallDown || wallUp)    ? _cellSize : thin;
 
@@ -298,6 +318,61 @@ public class MazeGenerator : MonoBehaviour
                     cube.GetComponent<Renderer>().sharedMaterial = _wallMaterial;
             }
         }
+    }
+
+    /// <summary>
+    /// Spawns four single flat slabs — one per side — to form the outer boundary.
+    /// Each slab is exactly _wallThicknessFraction * _cellSize thick on its narrow axis
+    /// and spans the full grid width/height on its long axis, so it looks identical
+    /// to any other straight wall run in the maze.
+    /// </summary>
+    private void SpawnBoundary()
+    {
+        GameObject boundaryParent = new GameObject("Boundary");
+        boundaryParent.transform.SetParent(_mazeRoot.transform);
+
+        float thin   = _cellSize * _wallThicknessFraction;
+        float totalW = _columns  * _cellSize;
+        float totalH = _rows     * _cellSize;
+        float cx     = _origin.x + totalW * 0.5f;
+        float cy     = _origin.y + totalH * 0.5f;
+
+        Material mat = _wallMaterial;
+
+        // Bottom slab — sits at the bottom row's cell centre, full width, thin height.
+        float bottomY = _origin.y + _cellSize * 0.5f;
+        SpawnSlab("Boundary_Bottom", boundaryParent,
+            new Vector3(cx, bottomY, 0f),
+            new Vector3(totalW, thin, _wallDepth), mat);
+
+        // Top slab
+        float topY = _origin.y + totalH - _cellSize * 0.5f;
+        SpawnSlab("Boundary_Top", boundaryParent,
+            new Vector3(cx, topY, 0f),
+            new Vector3(totalW, thin, _wallDepth), mat);
+
+        // Left slab — full height, thin width.
+        float leftX = _origin.x + _cellSize * 0.5f;
+        SpawnSlab("Boundary_Left", boundaryParent,
+            new Vector3(leftX, cy, 0f),
+            new Vector3(thin, totalH, _wallDepth), mat);
+
+        // Right slab
+        float rightX = _origin.x + totalW - _cellSize * 0.5f;
+        SpawnSlab("Boundary_Right", boundaryParent,
+            new Vector3(rightX, cy, 0f),
+            new Vector3(thin, totalH, _wallDepth), mat);
+    }
+
+    private void SpawnSlab(string slabName, GameObject parent, Vector3 pos, Vector3 scale, Material mat)
+    {
+        GameObject slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        slab.name = slabName;
+        slab.transform.SetParent(parent.transform);
+        slab.transform.position = pos;
+        slab.transform.localScale = scale;
+        if (mat != null)
+            slab.GetComponent<Renderer>().sharedMaterial = mat;
     }
 
     // ── Spawn point placement ─────────────────────────────────────────────────
@@ -516,23 +591,35 @@ public class MazeGenerator : MonoBehaviour
         // Draw the generated grid if available (Edit-mode preview).
         if (_grid == null) return;
 
-        for (int c = 0; c < _columns; c++)
+        float gthin  = _cellSize * _wallThicknessFraction;
+        float totalW = _columns  * _cellSize;
+        float totalH = _rows     * _cellSize;
+        float gcx    = _origin.x + totalW * 0.5f;
+        float gcy    = _origin.y + totalH * 0.5f;
+
+        // Draw boundary slabs.
+        Gizmos.color = new Color(0.6f, 0.2f, 0.8f, 0.35f);
+        Gizmos.DrawCube(new Vector3(gcx, _origin.y + _cellSize * 0.5f, 0f),            new Vector3(totalW, gthin, _wallDepth));
+        Gizmos.DrawCube(new Vector3(gcx, _origin.y + totalH - _cellSize * 0.5f, 0f),   new Vector3(totalW, gthin, _wallDepth));
+        Gizmos.DrawCube(new Vector3(_origin.x + _cellSize * 0.5f, gcy, 0f),            new Vector3(gthin, totalH, _wallDepth));
+        Gizmos.DrawCube(new Vector3(_origin.x + totalW - _cellSize * 0.5f, gcy, 0f),   new Vector3(gthin, totalH, _wallDepth));
+
+        // Draw interior wall cells.
+        for (int c = 1; c < _columns - 1; c++)
         {
-            for (int r = 0; r < _rows; r++)
+            for (int r = 1; r < _rows - 1; r++)
             {
-                if (_grid[c, r] == CellType.Wall)
-                {
-                    Gizmos.color = new Color(0.6f, 0.2f, 0.8f, 0.25f);
-                    Vector3 pos = CellToWorld(c, r);
-                    float gthin = _cellSize * _wallThicknessFraction;
-                    bool wL = InBounds(c - 1, r) && _grid[c - 1, r] == CellType.Wall;
-                    bool wR = InBounds(c + 1, r) && _grid[c + 1, r] == CellType.Wall;
-                    bool wD = InBounds(c, r - 1) && _grid[c, r - 1] == CellType.Wall;
-                    bool wU = InBounds(c, r + 1) && _grid[c, r + 1] == CellType.Wall;
-                    float gx = (wL || wR) ? _cellSize : gthin;
-                    float gy = (wD || wU) ? _cellSize : gthin;
-                    Gizmos.DrawCube(pos, new Vector3(gx, gy, _wallDepth));
-                }
+                if (_grid[c, r] != CellType.Wall) continue;
+
+                Gizmos.color = new Color(0.6f, 0.2f, 0.8f, 0.25f);
+                Vector3 pos = CellToWorld(c, r);
+                bool wL = InBounds(c - 1, r) && _grid[c - 1, r] == CellType.Wall;
+                bool wR = InBounds(c + 1, r) && _grid[c + 1, r] == CellType.Wall;
+                bool wD = InBounds(c, r - 1) && _grid[c, r - 1] == CellType.Wall;
+                bool wU = InBounds(c, r + 1) && _grid[c, r + 1] == CellType.Wall;
+                float gx = (wL || wR) ? _cellSize : gthin;
+                float gy = (wD || wU) ? _cellSize : gthin;
+                Gizmos.DrawCube(pos, new Vector3(gx, gy, _wallDepth));
             }
         }
     }
