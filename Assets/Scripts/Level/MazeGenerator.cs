@@ -514,10 +514,12 @@ public class MazeGenerator : MonoBehaviour
         MovePlayer(_p2Light != null ? _p2Light.transform : null, p2Pos);
 
         // Fish snap to their light's final world position so they always start together.
+        // Use Teleport() instead of MovePlayer() so the Rigidbody position AND
+        // velocity are both reset — otherwise the physics engine fights the move.
         if (_p1Fish != null && _p1Light != null)
-            MovePlayer(_p1Fish.transform, _p1Light.transform.position);
+            _p1Fish.Teleport(_p1Light.transform.position);
         if (_p2Fish != null && _p2Light != null)
-            MovePlayer(_p2Fish.transform, _p2Light.transform.position);
+            _p2Fish.Teleport(_p2Light.transform.position);
     }
 
     /// <summary>Teleports a transform to worldXY while preserving its original Z.</summary>
@@ -635,65 +637,4 @@ public class MazeGenerator : MonoBehaviour
         }
     }
 
-    // ── Scene Gizmos ──────────────────────────────────────────────────────────
-
-#if UNITY_EDITOR
-    private void OnDrawGizmos()
-    {
-        ComputeOrigin();
-
-        float totalWidth  = _columns * _cellSize;
-        float totalHeight = _rows    * _cellSize;
-
-        Vector3 bl = _origin;
-        Vector3 br = _origin + new Vector3(totalWidth, 0f, 0f);
-        Vector3 tr = _origin + new Vector3(totalWidth, totalHeight, 0f);
-        Vector3 tl = _origin + new Vector3(0f, totalHeight, 0f);
-
-        UnityEditor.Handles.color = new Color(0.8f, 0.4f, 1f, 0.8f);
-        UnityEditor.Handles.DrawLine(bl, br);
-        UnityEditor.Handles.DrawLine(br, tr);
-        UnityEditor.Handles.DrawLine(tr, tl);
-        UnityEditor.Handles.DrawLine(tl, bl);
-
-        UnityEditor.Handles.Label(
-            new Vector3(_origin.x + totalWidth * 0.5f, _origin.y + totalHeight + 0.4f, 0f),
-            $"Maze  {_columns}×{_rows}  ({totalWidth:F1}×{totalHeight:F1} wu)");
-
-        // Draw the generated grid if available (Edit-mode preview).
-        if (_grid == null) return;
-
-        float gthin  = _cellSize * _wallThicknessFraction;
-        float totalW = _columns  * _cellSize;
-        float totalH = _rows     * _cellSize;
-        float gcx    = _origin.x + totalW * 0.5f;
-        float gcy    = _origin.y + totalH * 0.5f;
-
-        // Draw boundary slabs.
-        Gizmos.color = new Color(0.6f, 0.2f, 0.8f, 0.35f);
-        Gizmos.DrawCube(new Vector3(gcx, _origin.y + _cellSize * 0.5f, 0f),            new Vector3(totalW, gthin, _wallDepth));
-        Gizmos.DrawCube(new Vector3(gcx, _origin.y + totalH - _cellSize * 0.5f, 0f),   new Vector3(totalW, gthin, _wallDepth));
-        Gizmos.DrawCube(new Vector3(_origin.x + _cellSize * 0.5f, gcy, 0f),            new Vector3(gthin, totalH, _wallDepth));
-        Gizmos.DrawCube(new Vector3(_origin.x + totalW - _cellSize * 0.5f, gcy, 0f),   new Vector3(gthin, totalH, _wallDepth));
-
-        // Draw interior wall cells.
-        for (int c = 1; c < _columns - 1; c++)
-        {
-            for (int r = 1; r < _rows - 1; r++)
-            {
-                if (_grid[c, r] != CellType.Wall) continue;
-
-                Gizmos.color = new Color(0.6f, 0.2f, 0.8f, 0.25f);
-                Vector3 pos = CellToWorld(c, r);
-                bool wL = InBounds(c - 1, r) && _grid[c - 1, r] == CellType.Wall;
-                bool wR = InBounds(c + 1, r) && _grid[c + 1, r] == CellType.Wall;
-                bool wD = InBounds(c, r - 1) && _grid[c, r - 1] == CellType.Wall;
-                bool wU = InBounds(c, r + 1) && _grid[c, r + 1] == CellType.Wall;
-                float gx = (wL || wR) ? _cellSize : gthin;
-                float gy = (wD || wU) ? _cellSize : gthin;
-                Gizmos.DrawCube(pos, new Vector3(gx, gy, _wallDepth));
-            }
-        }
-    }
-#endif
 }

@@ -55,6 +55,22 @@ public class PlayerFishController : MonoBehaviour
                           | RigidbodyConstraints.FreezePositionZ;
     }
 
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Physics-safe teleport: moves the Rigidbody and clears all velocity so
+    /// the fish doesn't drift away from its new position on the next physics tick.
+    /// Preserves the fish's original Z so it stays on the XY plane.
+    /// </summary>
+    public void Teleport(Vector3 worldXY)
+    {
+        Vector3 target = new Vector3(worldXY.x, worldXY.y, transform.position.z);
+        _rb.linearVelocity  = Vector3.zero;
+        _rb.angularVelocity = Vector3.zero;
+        _rb.position        = target;
+        transform.position  = target;
+    }
+
     private void FixedUpdate()
     {
         if (_target == null || !IsInRange() || !HasLineOfSight())
@@ -97,19 +113,4 @@ public class PlayerFishController : MonoBehaviour
                                 QueryTriggerInteraction.Ignore);
     }
 
-    // ── Gizmos ────────────────────────────────────────────────────────────────
-
-#if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
-    {
-        UnityEditor.Handles.color = new Color(1f, 0.9f, 0.2f, 0.3f);
-        UnityEditor.Handles.DrawWireDisc(transform.position, Vector3.forward, _followRadius);
-
-        if (_target == null) return;
-
-        bool active = Application.isPlaying && IsInRange() && HasLineOfSight();
-        Gizmos.color = active ? new Color(0.2f, 1f, 0.3f, 0.8f) : new Color(1f, 0.2f, 0.2f, 0.5f);
-        Gizmos.DrawLine(transform.position, _target.position);
-    }
-#endif
 }
