@@ -90,6 +90,22 @@ public class MazeGenerator : MonoBehaviour
     [Tooltip("Number of ProblemSpawnPocket objects to place in the maze.")]
     [SerializeField] private int _problemPocketCount = 8;
 
+    // ── Players ───────────────────────────────────────────────────────────────
+
+    [Header("Players — P1")]
+    [Tooltip("PlayerLightController GameObject for Player 1. Teleported to a random open cell on generate.")]
+    [SerializeField] private PlayerLightController _p1Light;
+
+    [Tooltip("PlayerFishController GameObject for Player 1. Teleported to the same open cell as its light.")]
+    [SerializeField] private PlayerFishController _p1Fish;
+
+    [Header("Players — P2")]
+    [Tooltip("PlayerLightController GameObject for Player 2.")]
+    [SerializeField] private PlayerLightController _p2Light;
+
+    [Tooltip("PlayerFishController GameObject for Player 2.")]
+    [SerializeField] private PlayerFishController _p2Fish;
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private enum CellType { Wall, Passage }
@@ -101,11 +117,25 @@ public class MazeGenerator : MonoBehaviour
     // Computed bottom-left corner from _center and grid dimensions.
     private Vector3 _origin;
 
+    /// <summary>
+    /// World-space XY rectangle covering the full maze interior (inner passage area,
+    /// excluding the outer boundary ring). Available after Generate() runs.
+    /// PlayerLightController uses this to clamp light movement inside the maze.
+    /// </summary>
+    public Rect WorldBounds { get; private set; }
+
     private void ComputeOrigin()
     {
         float halfW = _columns * _cellSize * 0.5f;
         float halfH = _rows    * _cellSize * 0.5f;
         _origin = _center - new Vector3(halfW, halfH, 0f);
+
+        // Inner bounds = full grid minus one cell ring on each side (the boundary walls).
+        float innerX = _origin.x + _cellSize;
+        float innerY = _origin.y + _cellSize;
+        float innerW = (_columns - 2) * _cellSize;
+        float innerH = (_rows    - 2) * _cellSize;
+        WorldBounds = new Rect(innerX, innerY, innerW, innerH);
     }
 
     // ── Unity ─────────────────────────────────────────────────────────────────
@@ -142,6 +172,7 @@ public class MazeGenerator : MonoBehaviour
         SpawnBoundary();
         PlaceSpawnPoints();
         PlaceProblemPockets();
+        PlacePlayers();
         FitCameraToMaze();
 
         Debug.Log($"[MazeGenerator] Maze generated — {_columns}×{_rows} cells, seed={seed}.");
@@ -453,6 +484,47 @@ public class MazeGenerator : MonoBehaviour
             GameObject go = Instantiate(_problemPocketPrefab, pos, Quaternion.identity, pocketParent.transform);
             go.name = $"ProblemPocket_{placed}";
         }
+    }
+
+    // ── Player placement ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Moves P1 and P2 light + fish to random open (Passage) cells.
+    /// P1 and P2 are guaranteed different cells.
+    /// Light and fish for the same player share the same cell so the fish
+    /// starts within follow range of its light.
+    /// The Z coordinate of each object is preserved.
+    /// </summary>
+    private void PlacePlayers()
+    {
+        List<Vector2Int> open = GetAllPassageCells();
+        ShuffleList(open);
+
+        if (open.Count == 0)
+        {
+            Debug.LogWarning("[MazeGenerator] No passage cells available to place players.", this);
+            return;
+        }
+
+        // Place each light in a unique cell, then snap the fish to its light's position.
+        Vector3 p1Pos = open.Count > 0 ? CellToWorld(open[0].x, open[0].y) : _center;
+        Vector3 p2Pos = open.Count > 1 ? CellToWorld(open[1].x, open[1].y) : p1Pos;
+
+        MovePlayer(_p1Light != null ? _p1Light.transform : null, p1Pos);
+        MovePlayer(_p2Light != null ? _p2Light.transform : null, p2Pos);
+
+        // Fish snap to their light's final world position so they always start together.
+        if (_p1Fish != null && _p1Light != null)
+            MovePlayer(_p1Fish.transform, _p1Light.transform.position);
+        if (_p2Fish != null && _p2Light != null)
+            MovePlayer(_p2Fish.transform, _p2Light.transform.position);
+    }
+
+    /// <summary>Teleports a transform to worldXY while preserving its original Z.</summary>
+    private static void MovePlayer(Transform t, Vector3 worldXY)
+    {
+        if (t == null) return;
+        t.position = new Vector3(worldXY.x, worldXY.y, t.position.z);
     }
 
     // ── Camera fit ────────────────────────────────────────────────────────────

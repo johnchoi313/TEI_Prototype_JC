@@ -1,3 +1,5 @@
+/*
+
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -97,3 +99,5 @@ public class NoiseVisionEffect : MonoBehaviour
             Destroy(_volume.profile);
     }
 }
+
+*/
