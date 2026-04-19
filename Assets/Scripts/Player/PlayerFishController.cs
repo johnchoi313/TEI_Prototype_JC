@@ -40,9 +40,18 @@ public class PlayerFishController : MonoBehaviour
     [Tooltip("Layer(s) whose colliders block line-of-sight. Set to your maze wall layer.")]
     [SerializeField] private LayerMask _wallLayerMask = ~0;
 
+    [Header("Mesh Rotation")]
+    [Tooltip("Child transform that holds the fish mesh. Only this object rotates — the collider parent stays frozen.")]
+    [SerializeField] private Transform _meshTransform;
+
+    [Tooltip("Degrees per second the mesh rotates toward its target orientation.")]
+    [SerializeField] private float _rotationSpeed = 180f;
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private Rigidbody _rb;
+    private float _meshRotZ = 0f; // current Z tilt in degrees (fish nose up/down)
+    private float _meshRotY = 0f; // current Y flip in degrees (0 = right, 180 = left)
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -71,6 +80,12 @@ public class PlayerFishController : MonoBehaviour
         transform.position  = target;
     }
 
+    private void Update()
+    {
+        if (_meshTransform == null || _target == null) return;
+        UpdateMeshRotation();
+    }
+
     private void FixedUpdate()
     {
         if (_target == null || !IsInRange() || !HasLineOfSight())
@@ -84,6 +99,37 @@ public class PlayerFishController : MonoBehaviour
         toTarget.z = 0f;
 
         _rb.linearVelocity = toTarget.normalized * _followSpeed;
+    }
+
+    // ── Mesh rotation ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Rotates the cosmetic mesh child independently of the physics collider:
+    ///   Z axis — tilts the nose toward the target, clamped to ±80°.
+    ///             Positive Z = counter-clockwise = nose tilts up-left.
+    ///   Y axis — flips the sprite/mesh: 0° when target is to the right,
+    ///             180° when target is to the left.
+    /// Both angles are smoothed at _rotationSpeed degrees/second.
+    /// </summary>
+    private void UpdateMeshRotation()
+    {
+        Vector3 toTarget = _target.position - transform.position;
+        toTarget.z = 0f;
+
+        // Y flip: determine facing direction from X component.
+        float targetY = (toTarget.x < 0f) ? 180f : 0f;
+
+        // Z tilt: angle of the direction vector in the XY plane, clamped to ±80°.
+        // atan2 gives the full angle; we clamp so the fish doesn't spin upside-down.
+        float angle    = Mathf.Atan2(toTarget.y, Mathf.Abs(toTarget.x)) * Mathf.Rad2Deg;
+        float targetZ  = Mathf.Clamp(angle, -80f, 80f);
+
+        // Smooth both angles independently.
+        float step = _rotationSpeed * Time.deltaTime;
+        _meshRotY  = Mathf.MoveTowards(_meshRotY, targetY, step);
+        _meshRotZ  = Mathf.MoveTowards(_meshRotZ, targetZ, step);
+
+        _meshTransform.localRotation = Quaternion.Euler(0f, _meshRotY, _meshRotZ);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

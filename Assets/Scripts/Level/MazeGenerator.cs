@@ -4,32 +4,34 @@ using UnityEngine;
 /// <summary>
 /// Runtime random maze generator using Randomized Prim's algorithm.
 ///
-/// Top-down 2D layout: the maze is laid out on the XY plane (Z = 0).
-/// Wall cubes are thin slabs (small Z depth) so a top-down camera sees
-/// them as solid filled squares. Passages appear as gaps between slabs.
+/// Top-down 2D layout on the XY plane (Z = 0).
 ///
-/// Generates an NxM grid of passage/wall cells, instantiates Unity cube
-/// primitives for every solid cell, and places SpawnPointMarker and
-/// ProblemSpawnPocket prefabs in randomly chosen dead-end passage cells.
+/// APPROACH — pillar + beam:
+///   Prim's runs on an odd-dimensioned logical grid. Every wall cell becomes either:
+///     • A square PILLAR cube (_wallThickness × _wallThickness) placed at the node center.
+///     • A stretched BEAM cube connecting two adjacent wall-node pillars horizontally
+///       or vertically (_cellSize long on the run axis, _wallThickness on the cross axis).
+///   Passage cells produce nothing. The result is a clean thin-wall maze with no
+///   overlapping geometry and no scaling heuristics.
+///   _cellSize controls corridor width (node-to-node spacing).
+///   _wallThickness controls how wide/tall the walls appear (~20% of cellSize looks good).
 ///
 /// SCENE SETUP
 ///   1. Create an empty GameObject (e.g. "MazeManager") in the scene.
 ///   2. Attach this component to it.
 ///   3. Assign spawnPointPrefab (must have SpawnPointMarker) and
 ///      problemPocketPrefab (must have ProblemSpawnPocket) in the Inspector.
-///   4. Tune grid size, cellSize, origin, seed, and wall material.
+///   4. Tune grid size, cellSize, wallThickness, center, seed, and wall material.
 ///   5. Press Play — the maze generates automatically in Start().
 ///   6. Right-click the component header → "Generate Maze" to preview in Edit mode.
 ///      Right-click → "Clear Maze" to destroy the preview.
 ///
 /// ALGORITHM (Randomized Prim's)
-///   Start from a random seed cell marked as Passage.
-///   Maintain a frontier list of Wall cells adjacent to any Passage.
-///   Each step: pick a random frontier cell, carve the wall between it
-///   and a random Passage neighbor, mark it as Passage, add its Wall neighbors
-///   to the frontier. Repeat until the frontier is empty.
-///   Result: a perfect maze (all cells reachable, no isolated areas).
-///   Prim's produces an organic, branchy layout with many dead ends.
+///   Start from a random odd-indexed interior cell marked as Passage.
+///   Maintain a frontier list of Wall cells two steps away from any Passage.
+///   Each step: pick a random frontier cell, carve it and the midpoint cell between
+///   it and a random Passage neighbor, add its new Wall neighbors to the frontier.
+///   Result: a perfect maze (all cells reachable, no loops).
 /// </summary>
 public class MazeGenerator : MonoBehaviour
 {
@@ -54,16 +56,13 @@ public class MazeGenerator : MonoBehaviour
     // ── Walls ─────────────────────────────────────────────────────────────────
 
     [Header("Walls")]
-    [Tooltip("Z depth of each wall cube. Keep small (e.g. 0.5) for a flat top-down look. " +
-             "Increase if you need the walls to act as 3D physics blockers at non-zero Z depths.")]
+    [Tooltip("Cross-section size of walls in world units. ~20% of cellSize looks good.")]
+    [SerializeField] private float _wallThickness = 0.4f;
+
+    [Tooltip("Z depth of each wall cube. Keep small (e.g. 0.5) for a flat top-down look.")]
     [SerializeField] private float _wallDepth = 0.5f;
 
-    [Tooltip("Wall thickness as a fraction of cellSize (0–1). " +
-             "1 = wall fills the whole cell. 0.25 = thin walls with wide corridors.")]
-    [Range(0.05f, 1f)]
-    [SerializeField] private float _wallThicknessFraction = 0.25f;
-
-    [Tooltip("Optional material applied to interior wall cubes. Leave null for Unity default.")]
+    [Tooltip("Optional material applied to wall cubes. Leave null for Unity default.")]
     [SerializeField] private Material _wallMaterial = null;
 
     // ── Camera ────────────────────────────────────────────────────────────────
@@ -110,9 +109,9 @@ public class MazeGenerator : MonoBehaviour
 
     private enum CellType { Wall, Passage }
 
-    private CellType[,] _grid;
+    private CellType[,]   _grid;
     private System.Random _rng;
-    private GameObject _mazeRoot;
+    private GameObject    _mazeRoot;
 
     // Computed bottom-left corner from _center and grid dimensions.
     private Vector3 _origin;
@@ -130,7 +129,7 @@ public class MazeGenerator : MonoBehaviour
         float halfH = _rows    * _cellSize * 0.5f;
         _origin = _center - new Vector3(halfW, halfH, 0f);
 
-        // Inner bounds = full grid minus one cell ring on each side (the boundary walls).
+        // Playable bounds = area between the outer-ring wall nodes (one cellSize inset).
         float innerX = _origin.x + _cellSize;
         float innerY = _origin.y + _cellSize;
         float innerW = (_columns - 2) * _cellSize;
@@ -155,21 +154,26 @@ public class MazeGenerator : MonoBehaviour
     public void Generate()
     {
         Clear();
+
+        // Prim's requires odd grid dimensions so every interior cell falls on an
+        // odd index and the 2-step carving reaches the full interior evenly.
+        if (_columns % 2 == 0) _columns++;
+        if (_rows    % 2 == 0) _rows++;
+
         ComputeOrigin();
 
         int seed = (_seed == 0) ? (int)System.DateTime.Now.Ticks : _seed;
         _rng = new System.Random(seed);
 
-        InitGrid();
-        RunPrims();
-        StampBorderRing();
-
         _mazeRoot = new GameObject("MazeRoot");
         _mazeRoot.transform.SetParent(transform);
         _mazeRoot.transform.localPosition = Vector3.zero;
 
-        SpawnWalls();
-        SpawnBoundary();
+        InitGrid();
+        RunPrims();       // carves passages into _grid
+        BuildWalls();     // pillars + beams for every wall cell
+
+        ApplyBoundsToLights();
         PlaceSpawnPoints();
         PlaceProblemPockets();
         PlacePlayers();
@@ -210,9 +214,14 @@ public class MazeGenerator : MonoBehaviour
 
     private void RunPrims()
     {
-        // Start from a random interior cell (not on the outer ring).
-        int startC = _rng.Next(1, _columns - 1);
-        int startR = _rng.Next(1, _rows - 1);
+        // Prim's steps 2 cells at a time, so the start cell and all carved cells
+        // must be on odd indices (1, 3, 5 …). Pick a random odd interior index
+        // for each axis. _columns and _rows are forced odd in Generate() so there
+        // is always at least one valid odd interior index on each axis.
+        int oddColCount = (_columns - 1) / 2; // number of odd indices in [1, _columns-2]
+        int oddRowCount = (_rows    - 1) / 2;
+        int startC = 1 + _rng.Next(0, oddColCount) * 2;
+        int startR = 1 + _rng.Next(0, oddRowCount) * 2;
 
         SetPassage(startC, startR);
 
@@ -284,27 +293,9 @@ public class MazeGenerator : MonoBehaviour
         return result;
     }
 
-    // Inner = not on the outer ring (the ring is always stamped back to Wall after carving).
+    // Inner = not on the outer ring. Prim's only carves interior cells so the
+    // outer ring cubes always remain, forming the solid maze border automatically.
     private bool IsInner(int c, int r) => c > 0 && c < _columns - 1 && r > 0 && r < _rows - 1;
-
-    /// <summary>
-    /// After Prim's finishes, force the entire outer ring back to Wall regardless
-    /// of what the algorithm carved. This gives us a clean grid to spawn boundary
-    /// slabs from, without any per-cell border cubes.
-    /// </summary>
-    private void StampBorderRing()
-    {
-        for (int c = 0; c < _columns; c++)
-        {
-            _grid[c, 0]          = CellType.Wall;
-            _grid[c, _rows - 1]  = CellType.Wall;
-        }
-        for (int r = 0; r < _rows; r++)
-        {
-            _grid[0, r]           = CellType.Wall;
-            _grid[_columns - 1, r] = CellType.Wall;
-        }
-    }
 
     private static Vector2Int[] CardinalDirections() => new[]
     {
@@ -315,95 +306,63 @@ public class MazeGenerator : MonoBehaviour
 
     // ── Wall spawning ─────────────────────────────────────────────────────────
 
-    private void SpawnWalls()
+    /// <summary>
+    /// Iterates every wall cell and places:
+    ///   • A square PILLAR at the cell center (_wallThickness × _wallThickness).
+    ///   • A horizontal BEAM to the right neighbor if it is also a wall cell.
+    ///   • A vertical   BEAM upward to the neighbor if it is also a wall cell.
+    /// Beams span from pillar-center to pillar-center (_cellSize long) and are
+    /// _wallThickness wide on the cross axis. Because we only emit beams in the
+    /// +X and +Y directions, every pair of adjacent wall cells gets exactly one
+    /// beam — no duplicates, no gaps, no overlapping geometry.
+    /// </summary>
+    private void BuildWalls()
     {
         GameObject wallParent = new GameObject("Walls");
         wallParent.transform.SetParent(_mazeRoot.transform);
 
-        float thin = _cellSize * _wallThicknessFraction;
+        float t = _wallThickness;
 
         for (int c = 0; c < _columns; c++)
         {
             for (int r = 0; r < _rows; r++)
             {
-                // Outer ring is handled by SpawnBoundary — skip it here.
-                if (!IsInner(c, r)) continue;
                 if (_grid[c, r] != CellType.Wall) continue;
 
-                bool wallLeft  = InBounds(c - 1, r) && _grid[c - 1, r] == CellType.Wall;
-                bool wallRight = InBounds(c + 1, r) && _grid[c + 1, r] == CellType.Wall;
-                bool wallDown  = InBounds(c, r - 1) && _grid[c, r - 1] == CellType.Wall;
-                bool wallUp    = InBounds(c, r + 1) && _grid[c, r + 1] == CellType.Wall;
-
-                float scaleX = (wallLeft || wallRight) ? _cellSize : thin;
-                float scaleY = (wallDown || wallUp)    ? _cellSize : thin;
-
                 Vector3 pos = CellToWorld(c, r);
-                GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                cube.name = $"Wall_{c}_{r}";
-                cube.transform.SetParent(wallParent.transform);
-                cube.transform.position = pos;
-                cube.transform.localScale = new Vector3(scaleX, scaleY, _wallDepth);
 
-                if (_wallMaterial != null)
-                    cube.GetComponent<Renderer>().sharedMaterial = _wallMaterial;
+                // Pillar
+                SpawnWallCube(wallParent, $"Pillar_{c}_{r}", pos,
+                    new Vector3(t, t, _wallDepth));
+
+                // Beam rightward (+X) to (c+1, r)
+                if (InBounds(c + 1, r) && _grid[c + 1, r] == CellType.Wall)
+                {
+                    Vector3 beamPos = pos + new Vector3(_cellSize * 0.5f, 0f, 0f);
+                    SpawnWallCube(wallParent, $"BeamH_{c}_{r}", beamPos,
+                        new Vector3(_cellSize, t, _wallDepth));
+                }
+
+                // Beam upward (+Y) to (c, r+1)
+                if (InBounds(c, r + 1) && _grid[c, r + 1] == CellType.Wall)
+                {
+                    Vector3 beamPos = pos + new Vector3(0f, _cellSize * 0.5f, 0f);
+                    SpawnWallCube(wallParent, $"BeamV_{c}_{r}", beamPos,
+                        new Vector3(t, _cellSize, _wallDepth));
+                }
             }
         }
     }
 
-    /// <summary>
-    /// Spawns four single flat slabs — one per side — to form the outer boundary.
-    /// Each slab is exactly _wallThicknessFraction * _cellSize thick on its narrow axis
-    /// and spans the full grid width/height on its long axis, so it looks identical
-    /// to any other straight wall run in the maze.
-    /// </summary>
-    private void SpawnBoundary()
+    private void SpawnWallCube(GameObject parent, string cubeName, Vector3 pos, Vector3 scale)
     {
-        GameObject boundaryParent = new GameObject("Boundary");
-        boundaryParent.transform.SetParent(_mazeRoot.transform);
-
-        float thin   = _cellSize * _wallThicknessFraction;
-        float totalW = _columns  * _cellSize;
-        float totalH = _rows     * _cellSize;
-        float cx     = _origin.x + totalW * 0.5f;
-        float cy     = _origin.y + totalH * 0.5f;
-
-        Material mat = _wallMaterial;
-
-        // Bottom slab — sits at the bottom row's cell centre, full width, thin height.
-        float bottomY = _origin.y + _cellSize * 0.5f;
-        SpawnSlab("Boundary_Bottom", boundaryParent,
-            new Vector3(cx, bottomY, 0f),
-            new Vector3(totalW, thin, _wallDepth), mat);
-
-        // Top slab
-        float topY = _origin.y + totalH - _cellSize * 0.5f;
-        SpawnSlab("Boundary_Top", boundaryParent,
-            new Vector3(cx, topY, 0f),
-            new Vector3(totalW, thin, _wallDepth), mat);
-
-        // Left slab — full height, thin width.
-        float leftX = _origin.x + _cellSize * 0.5f;
-        SpawnSlab("Boundary_Left", boundaryParent,
-            new Vector3(leftX, cy, 0f),
-            new Vector3(thin, totalH, _wallDepth), mat);
-
-        // Right slab
-        float rightX = _origin.x + totalW - _cellSize * 0.5f;
-        SpawnSlab("Boundary_Right", boundaryParent,
-            new Vector3(rightX, cy, 0f),
-            new Vector3(thin, totalH, _wallDepth), mat);
-    }
-
-    private void SpawnSlab(string slabName, GameObject parent, Vector3 pos, Vector3 scale, Material mat)
-    {
-        GameObject slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        slab.name = slabName;
-        slab.transform.SetParent(parent.transform);
-        slab.transform.position = pos;
-        slab.transform.localScale = scale;
-        if (mat != null)
-            slab.GetComponent<Renderer>().sharedMaterial = mat;
+        GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cube.name = cubeName;
+        cube.transform.SetParent(parent.transform);
+        cube.transform.position = pos;
+        cube.transform.localScale = scale;
+        if (_wallMaterial != null)
+            cube.GetComponent<Renderer>().sharedMaterial = _wallMaterial;
     }
 
     // ── Spawn point placement ─────────────────────────────────────────────────
@@ -484,6 +443,27 @@ public class MazeGenerator : MonoBehaviour
             GameObject go = Instantiate(_problemPocketPrefab, pos, Quaternion.identity, pocketParent.transform);
             go.name = $"ProblemPocket_{placed}";
         }
+    }
+
+    // ── Boundary setup ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Pushes the freshly computed WorldBounds into each light controller so
+    /// clamping is tight against the actual maze walls generated this run.
+    /// The bounds are inset by half a wall thickness so the light center never
+    /// visually overlaps the outer wall pillars.
+    /// </summary>
+    private void ApplyBoundsToLights()
+    {
+        float inset = _wallThickness * 0.5f;
+        Rect bounds = new Rect(
+            WorldBounds.xMin + inset,
+            WorldBounds.yMin + inset,
+            WorldBounds.width  - inset * 2f,
+            WorldBounds.height - inset * 2f);
+
+        _p1Light?.SetBounds(bounds);
+        _p2Light?.SetBounds(bounds);
     }
 
     // ── Player placement ──────────────────────────────────────────────────────

@@ -5770,8 +5770,8 @@ MonoBehaviour:
   _cellSize: 2
   _center: {x: 0, y: 0, z: 0}
   _seed: 0
+  _wallThickness: 0.4
   _wallDepth: 0.5
-  _wallThicknessFraction: 0.25
   _wallMaterial: {fileID: 0}
   _mazeCamera: {fileID: 1076206474}
   _cameraMargin: 1
@@ -9011,6 +9011,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayerFishCollider 2
       objectReference: {fileID: 0}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _meshTransform
+      value: 
+      objectReference: {fileID: 1760498953}
     - target: {fileID: 4230359491155956583, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 1
@@ -10401,6 +10405,11 @@ Transform:
   - {fileID: 1241851461}
   m_Father: {fileID: 972939813}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1699111765 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1139913181195013962, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+  m_PrefabInstance: {fileID: 1223640582705210818}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1706355270
 GameObject:
   m_ObjectHideFlags: 0
@@ -10776,6 +10785,11 @@ CanvasRenderer:
 Camera:
   m_CorrespondingSourceObject: {fileID: 5420016226152159492, guid: f1c78a060cc3d47fbb3980b890d36cf9, type: 3}
   m_PrefabInstance: {fileID: 2233082687543744705}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1760498953 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1139913181195013962, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+  m_PrefabInstance: {fileID: 1451598513}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1784948164
 GameObject:
@@ -12880,6 +12894,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayerFishCollider 1
       objectReference: {fileID: 0}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _meshTransform
+      value: 
+      objectReference: {fileID: 1699111765}
     - target: {fileID: 4230359491155956583, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: m_LocalPosition.x
       value: -1
@@ -13462,7 +13480,8 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 3677910533408983677, guid: a57225a91dc0c4a1b90d39fe406c2701, type: 3}
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 5720550914136265131, guid: a57225a91dc0c4a1b90d39fe406c2701, type: 3}
       insertIndex: -1
