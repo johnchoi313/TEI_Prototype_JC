@@ -2026,7 +2026,7 @@ Animator:
   m_GameObject: {fileID: 8519499414813800420}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: 81bb9eea30387e442899949a80011e55, type: 3}
-  m_Controller: {fileID: 9100000, guid: ad2cc96c72ecdc54dbd0b7b50b5d9448, type: 2}
+  m_Controller: {fileID: 0}
   m_CullingMode: 1
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -3548,16 +3548,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   receiver: {fileID: 6029612542203540319}
-  mappings:
-  - bodyID: 0
-    character: {fileID: 8519499414813800420}
-    faceMesh: {fileID: 0}
-    lockRootPosition: 1
-    jointFlips: []
-    animator: {fileID: 0}
-    boneTransforms: []
-    boneBindDirs: []
-    boneBindUps: []
+  character: {fileID: 8519499414813800420}
+  bodyID: 0
+  faceMesh: {fileID: 0}
 --- !u!114 &6029612542203540319
 MonoBehaviour:
   m_ObjectHideFlags: 0

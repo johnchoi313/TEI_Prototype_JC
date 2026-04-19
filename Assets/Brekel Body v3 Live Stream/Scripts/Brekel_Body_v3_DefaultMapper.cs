@@ -93,8 +93,8 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
             return;
         }
 
-        // Run auto-find for any fields still unassigned
-        AutoFindJoints(overwriteExisting: false);
+        // Auto-find any joints not already manually assigned
+        if (character != null) AutoFindJoints();
 
         if (face_mesh != null)
             _faceSMR = face_mesh.GetComponent<SkinnedMeshRenderer>();
@@ -151,77 +151,57 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     /// When false (default at runtime), only fills null fields.
     /// </param>
     [ContextMenu("Auto-Find Joints")]
-    public void AutoFindJoints() => AutoFindJoints(overwriteExisting: true);
-
-    private void AutoFindJoints(bool overwriteExisting)
+    public void AutoFindJoints()
     {
-        GameObject root = character != null ? character : gameObject;
-
-        int found = 0;
-        int total = 19; // number of joint fields
-
-        hips       = Resolve(hips,       Names_hips,      root, overwriteExisting, ref found);
-        spine      = Resolve(spine,      Names_spine,     root, overwriteExisting, ref found);
-        chest      = Resolve(chest,      Names_chest,     root, overwriteExisting, ref found);
-        neck       = Resolve(neck,       Names_neck,      root, overwriteExisting, ref found);
-        head       = Resolve(head,       Names_head,      root, overwriteExisting, ref found);
-        upperLeg_L = Resolve(upperLeg_L, Names_upperLeg_L,root, overwriteExisting, ref found);
-        lowerLeg_L = Resolve(lowerLeg_L, Names_lowerLeg_L,root, overwriteExisting, ref found);
-        foot_L     = Resolve(foot_L,     Names_foot_L,    root, overwriteExisting, ref found);
-        upperLeg_R = Resolve(upperLeg_R, Names_upperLeg_R,root, overwriteExisting, ref found);
-        lowerLeg_R = Resolve(lowerLeg_R, Names_lowerLeg_R,root, overwriteExisting, ref found);
-        foot_R     = Resolve(foot_R,     Names_foot_R,    root, overwriteExisting, ref found);
-        collar_L   = Resolve(collar_L,   Names_collar_L,  root, overwriteExisting, ref found);
-        upperArm_L = Resolve(upperArm_L, Names_upperArm_L,root, overwriteExisting, ref found);
-        foreArm_L  = Resolve(foreArm_L,  Names_foreArm_L, root, overwriteExisting, ref found);
-        hand_L     = Resolve(hand_L,     Names_hand_L,    root, overwriteExisting, ref found);
-        collar_R   = Resolve(collar_R,   Names_collar_R,  root, overwriteExisting, ref found);
-        upperArm_R = Resolve(upperArm_R, Names_upperArm_R,root, overwriteExisting, ref found);
-        foreArm_R  = Resolve(foreArm_R,  Names_foreArm_R, root, overwriteExisting, ref found);
-        hand_R     = Resolve(hand_R,     Names_hand_R,    root, overwriteExisting, ref found);
-
-        // Face mesh — finds first matching child GameObject
-        if (overwriteExisting || face_mesh == null)
+        if (character == null)
         {
-            GameObject fm = FindGameObject(Names_faceMesh, root);
-            if (fm != null) { face_mesh = fm; found++; total++; }
+            Debug.LogWarning("[DefaultMapper] Auto-Find: assign a Character object first.");
+            return;
         }
 
-        Debug.Log($"[DefaultMapper] Auto-Find complete: {found}/{total} joints resolved on '{root.name}'.");
+        // Clear all refs before searching
+        hips = spine = chest = neck = head = null;
+        upperLeg_L = lowerLeg_L = foot_L = null;
+        upperLeg_R = lowerLeg_R = foot_R = null;
+        collar_L = upperArm_L = foreArm_L = hand_L = null;
+        collar_R = upperArm_R = foreArm_R = hand_R = null;
+        face_mesh = null;
+
+        int found = 0, total = 19;
+        Transform root = character.transform;
+
+        hips       = Find(Names_hips,       root, ref found);
+        spine      = Find(Names_spine,      root, ref found);
+        chest      = Find(Names_chest,      root, ref found);
+        neck       = Find(Names_neck,       root, ref found);
+        head       = Find(Names_head,       root, ref found);
+        upperLeg_L = Find(Names_upperLeg_L, root, ref found);
+        lowerLeg_L = Find(Names_lowerLeg_L, root, ref found);
+        foot_L     = Find(Names_foot_L,     root, ref found);
+        upperLeg_R = Find(Names_upperLeg_R, root, ref found);
+        lowerLeg_R = Find(Names_lowerLeg_R, root, ref found);
+        foot_R     = Find(Names_foot_R,     root, ref found);
+        collar_L   = Find(Names_collar_L,   root, ref found);
+        upperArm_L = Find(Names_upperArm_L, root, ref found);
+        foreArm_L  = Find(Names_foreArm_L,  root, ref found);
+        hand_L     = Find(Names_hand_L,     root, ref found);
+        collar_R   = Find(Names_collar_R,   root, ref found);
+        upperArm_R = Find(Names_upperArm_R, root, ref found);
+        foreArm_R  = Find(Names_foreArm_R,  root, ref found);
+        hand_R     = Find(Names_hand_R,     root, ref found);
+
+        Transform faceT = Find(Names_faceMesh, root, ref found);
+        if (faceT != null) { face_mesh = faceT.gameObject; total++; }
+
+        Debug.Log($"[DefaultMapper] Auto-Find: {found}/{total} joints found in '{character.name}'.");
     }
 
-    /// <summary>Resolves one Transform field from a prioritised name list.</summary>
-    private static Transform Resolve(Transform current, string[] names, GameObject root,
-                                     bool overwrite, ref int found)
-    {
-        if (!overwrite && current != null)
-            return current;
-
-        foreach (string n in names)
-        {
-            Transform t = FindTransform(n, root);
-            if (t != null) { found++; return t; }
-        }
-        return current; // keep whatever was there (may be null)
-    }
-
-    /// <summary>Searches root and all descendants for a Transform with the given name.</summary>
-    private static Transform FindTransform(string name, GameObject root)
-    {
-        if (root.name == name) return root.transform;
-        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
-            if (child.name == name) return child;
-        return null;
-    }
-
-    /// <summary>Searches root and all descendants for a GameObject with any of the given names.</summary>
-    private static GameObject FindGameObject(string[] names, GameObject root)
+    /// <summary>Searches only within root's hierarchy. Returns null if not found.</summary>
+    private static Transform Find(string[] names, Transform root, ref int found)
     {
         foreach (string n in names)
-        {
-            Transform t = FindTransform(n, root);
-            if (t != null) return t.gameObject;
-        }
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == n) { found++; return t; }
         return null;
     }
 
