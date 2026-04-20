@@ -10341,8 +10341,6 @@ MonoBehaviour:
   - {fileID: 620075023}
   player1Controller: {fileID: 1223640582705210820}
   player2Controller: {fileID: 1451598515}
-  kinectPlayer1: {fileID: 520155237}
-  kinectPlayer2: {fileID: 1975264713}
 --- !u!1001 &1451598513
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10379,6 +10377,18 @@ PrefabInstance:
       propertyPath: _meshTransform
       value: 
       objectReference: {fileID: 1760498953}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _wiggleFrequency
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _wiggleAmplitudeY
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _wiggleAmplitudeZ
+      value: 4
+      objectReference: {fileID: 0}
     - target: {fileID: 4230359491155956583, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 1
@@ -14534,6 +14544,18 @@ PrefabInstance:
       propertyPath: _meshTransform
       value: 
       objectReference: {fileID: 1699111765}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _wiggleFrequency
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _wiggleAmplitudeY
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 3999337673116867970, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _wiggleAmplitudeZ
+      value: 4
+      objectReference: {fileID: 0}
     - target: {fileID: 4230359491155956583, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: m_LocalPosition.x
       value: -1

@@ -50,11 +50,22 @@ public class PlayerFishController : MonoBehaviour
     [Tooltip("Degrees per second the mesh rotates toward its target orientation.")]
     [SerializeField] private float _rotationSpeed = 180f;
 
+    [Header("Wiggle")]
+    [Tooltip("Max wiggle angle added to Y (side-to-side tail wag) while moving.")]
+    [SerializeField] private float _wiggleAmplitudeY = 15f;
+
+    [Tooltip("Max wiggle angle added to Z (up-down body flex) while moving.")]
+    [SerializeField] private float _wiggleAmplitudeZ = 3f;
+
+    [Tooltip("Wiggle oscillation speed in Hz.")]
+    [SerializeField] private float _wiggleFrequency = 3f;
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private Rigidbody _rb;
-    private float _meshRotZ = 0f; // current Z tilt in degrees (fish nose up/down)
-    private float _meshRotY = 0f; // current Y flip in degrees (0 = right, 180 = left)
+    private float _meshRotZ   = 0f;   // current Z tilt (fish nose up/down)
+    private float _meshRotY   = 0f;   // current Y flip (0 = right, 180 = left)
+    private float _wiggleTime = 0f;   // independent time accumulator for wiggle
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -126,20 +137,29 @@ public class PlayerFishController : MonoBehaviour
         Vector3 toTarget = _target.position - transform.position;
         toTarget.z = 0f;
 
-        // Y flip: determine facing direction from X component.
+        // Y flip: facing direction from X component.
         float targetY = (toTarget.x < 0f) ? 180f : 0f;
 
-        // Z tilt: angle of the direction vector in the XY plane, clamped to ±80°.
-        // atan2 gives the full angle; we clamp so the fish doesn't spin upside-down.
-        float angle    = Mathf.Atan2(toTarget.y, Mathf.Abs(toTarget.x)) * Mathf.Rad2Deg;
-        float targetZ  = Mathf.Clamp(angle, -80f, 80f);
+        // Z tilt: angle in XY plane, clamped so fish doesn't flip upside-down.
+        float angle   = Mathf.Atan2(toTarget.y, Mathf.Abs(toTarget.x)) * Mathf.Rad2Deg;
+        float targetZ = Mathf.Clamp(angle, -80f, 80f);
 
-        // Smooth both angles independently.
+        // Smooth base orientation.
         float step = _rotationSpeed * Time.deltaTime;
-        _meshRotY  = Mathf.MoveTowards(_meshRotY, targetY, step);
-        _meshRotZ  = Mathf.MoveTowards(_meshRotZ, targetZ, step);
+        _meshRotY = Mathf.MoveTowards(_meshRotY, targetY, step);
+        _meshRotZ = Mathf.MoveTowards(_meshRotZ, targetZ, step);
 
-        _meshTransform.localRotation = Quaternion.Euler(0f, _meshRotY, _meshRotZ);
+        // Wiggle: only while actively moving toward target.
+        float speed = _rb.linearVelocity.magnitude;
+        float speedFactor = Mathf.Clamp01(speed / Mathf.Max(_followSpeed, 0.001f));
+
+        if (speedFactor > 0.01f)
+            _wiggleTime += Time.deltaTime * _wiggleFrequency * Mathf.PI * 2f;
+
+        float wiggleY = Mathf.Sin(_wiggleTime)           * _wiggleAmplitudeY * speedFactor;
+        float wiggleZ = Mathf.Sin(_wiggleTime + Mathf.PI * 0.5f) * _wiggleAmplitudeZ * speedFactor;
+
+        _meshTransform.localRotation = Quaternion.Euler(0f, _meshRotY + wiggleY, _meshRotZ + wiggleZ);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
