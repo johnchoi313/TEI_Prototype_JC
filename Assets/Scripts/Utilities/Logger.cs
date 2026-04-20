@@ -53,6 +53,10 @@ public class Logger : MonoBehaviour
     [Tooltip("ScoreTracker singleton — logs walls broken, stations collected, and ability swaps.")]
     public ScoreTracker scoreTracker;
 
+    [Header("Maze Reference")]
+    [Tooltip("MazeGenerator — records maze_columns and maze_rows in the session summary.")]
+    public MazeGenerator mazeGenerator;
+
     [Header("Debug UI")]
     [Tooltip("Optional TMP text to display the current save path and logging status.")]
     [SerializeField] private TMP_Text _debugText;
@@ -80,6 +84,10 @@ public class Logger : MonoBehaviour
     private string       _sessionDate;
     private string       _sessionTime;
     private int          _sessionNumber;
+
+    // Snapshot values captured once at session start.
+    private int _startBreakableWalls;
+    private int _startStations;
 
     // In-memory buffer for summary computation (numeric columns only, index matches _numericIndices)
     private readonly List<float[]> _rowBuffer = new List<float[]>();
@@ -212,6 +220,9 @@ public class Logger : MonoBehaviour
         _sessionStartTime = Time.time;
         IsLogging = true;
         UpdateRecordingIndicator();
+        ScoreTracker.Instance?.StartTimer();
+        _startBreakableWalls = mazeGenerator != null ? mazeGenerator.BreakableWallCount : 0;
+        _startStations       = mazeGenerator != null ? mazeGenerator.StationCount       : 0;
 
         InvokeRepeating(nameof(LogRow), 0f, 1f);
 
@@ -233,6 +244,7 @@ public class Logger : MonoBehaviour
         CancelInvoke(nameof(LogRow));
         IsLogging = false;
         UpdateRecordingIndicator();
+        ScoreTracker.Instance?.StopTimer();
 
         _writer?.Flush();
         _writer?.Close();
@@ -373,7 +385,9 @@ public class Logger : MonoBehaviour
         header.Append("mean_fov_B_size,max_fov_B_size,");
         header.Append("mean_ambient_RMS,max_ambient_RMS,");
         header.Append("mean_fish_speed,max_fish_speed,");
-        header.Append("total_walls_broken,total_stations_collected,total_ability_swaps");
+        header.Append("total_walls_broken,total_stations_collected,total_ability_swaps,");
+        header.Append("maze_columns,maze_rows,");
+        header.Append("start_breakable_walls,start_stations");
 
         ScoreTracker sc = scoreTracker != null ? scoreTracker : ScoreTracker.Instance;
         int finalWalls    = sc != null ? sc.WallsBroken       : 0;
@@ -400,7 +414,11 @@ public class Logger : MonoBehaviour
         data.Append(maxes[ColFishSpeed].ToString("F4")); data.Append(',');
         data.Append(finalWalls);    data.Append(',');
         data.Append(finalStations); data.Append(',');
-        data.Append(finalSwaps);
+        data.Append(finalSwaps);    data.Append(',');
+        data.Append(mazeGenerator != null ? mazeGenerator.Columns : 0); data.Append(',');
+        data.Append(mazeGenerator != null ? mazeGenerator.Rows    : 0); data.Append(',');
+        data.Append(_startBreakableWalls); data.Append(',');
+        data.Append(_startStations);
 
         try
         {

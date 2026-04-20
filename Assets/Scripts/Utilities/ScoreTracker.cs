@@ -6,13 +6,16 @@ using UnityEngine;
 ///
 /// Counts walls broken, stations collected, and ability swaps, writing each
 /// value to its own TMP_Text element every time a score event fires.
-/// All three counters are also read by Logger for CSV output.
+/// Also runs a session timer displayed as MM:SS in a separate TMP_Text.
+/// All counters are read by Logger for CSV output.
 ///
 /// SCENE SETUP
 ///   1. Create an empty GameObject (e.g. "ScoreTracker") in the scene.
 ///   2. Attach this component.
-///   3. Assign WallsBrokenText, StationsCollectedText, and TimesSwappedText to
-///      separate TMP_Text elements in your Canvas (any field can be left null).
+///   3. Assign WallsBrokenText, StationsCollectedText, TimesSwappedText, and
+///      TimerText to TMP_Text elements in your Canvas (any can be left null).
+///   4. The timer is paused by default. Call StartTimer() to begin (Logger does this
+///      automatically on StartLogging). Call ResetScores() to restart both timer and counts.
 /// </summary>
 public class ScoreTracker : MonoBehaviour
 {
@@ -32,11 +35,16 @@ public class ScoreTracker : MonoBehaviour
     [Tooltip("TMP text element that shows the ability-swap count.")]
     [SerializeField] private TMP_Text _timesSwappedText;
 
+    [Tooltip("TMP text element that shows elapsed time as MM:SS.")]
+    [SerializeField] private TMP_Text _timerText;
+
     // ── State ─────────────────────────────────────────────────────────────────
 
-    public int WallsBroken       { get; private set; }
-    public int StationsCollected { get; private set; }
-    public int TimesSwapped      { get; private set; }
+    public int   WallsBroken       { get; private set; }
+    public int   StationsCollected { get; private set; }
+    public int   TimesSwapped      { get; private set; }
+    public float ElapsedSeconds    { get; private set; }
+    public bool  TimerRunning      { get; private set; }
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -48,10 +56,33 @@ public class ScoreTracker : MonoBehaviour
             return;
         }
         Instance = this;
+        ElapsedSeconds = 0f;
+        TimerRunning   = false;
         RefreshUI();
     }
 
+    private void Update()
+    {
+        if (!TimerRunning) return;
+        ElapsedSeconds += Time.deltaTime;
+        RefreshTimer();
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>Resets ElapsedSeconds to zero and starts the timer.</summary>
+    public void StartTimer()
+    {
+        ElapsedSeconds = 0f;
+        TimerRunning   = true;
+        RefreshTimer();
+    }
+
+    /// <summary>Pauses the timer without resetting it.</summary>
+    public void StopTimer()
+    {
+        TimerRunning = false;
+    }
 
     public void AddWallBreak()
     {
@@ -79,6 +110,8 @@ public class ScoreTracker : MonoBehaviour
         WallsBroken       = 0;
         StationsCollected = 0;
         TimesSwapped      = 0;
+        ElapsedSeconds    = 0f;
+        TimerRunning      = false;
         RefreshUI();
     }
 
@@ -94,5 +127,16 @@ public class ScoreTracker : MonoBehaviour
 
         if (_timesSwappedText != null)
             _timesSwappedText.text = $"Ability Swaps: {TimesSwapped}";
+
+        RefreshTimer();
+    }
+
+    private void RefreshTimer()
+    {
+        if (_timerText == null) return;
+        int totalSeconds = Mathf.FloorToInt(ElapsedSeconds);
+        int minutes      = totalSeconds / 60;
+        int seconds      = totalSeconds % 60;
+        _timerText.text  = $"{minutes:00}:{seconds:00}";
     }
 }

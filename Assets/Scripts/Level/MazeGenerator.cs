@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 /// <summary>
@@ -127,6 +128,18 @@ public class MazeGenerator : MonoBehaviour
     [Tooltip("PlayerFishController GameObject for Player 2.")]
     [SerializeField] private PlayerFishController _p2Fish;
 
+    // ── Debug UI ──────────────────────────────────────────────────────────────
+
+    [Header("Debug UI — Grid Input Fields")]
+    [Tooltip("TMP InputField for column count. Auto-filled from PlayerPrefs on start.")]
+    [SerializeField] private TMP_InputField _columnsInputField;
+
+    [Tooltip("TMP InputField for row count. Auto-filled from PlayerPrefs on start.")]
+    [SerializeField] private TMP_InputField _rowsInputField;
+
+    private const string PrefColumns = "MazeGenerator_Columns";
+    private const string PrefRows    = "MazeGenerator_Rows";
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private enum CellType { Wall, Passage, BreakableWall }
@@ -144,6 +157,20 @@ public class MazeGenerator : MonoBehaviour
     /// PlayerLightController uses this to clamp light movement inside the maze.
     /// </summary>
     public Rect WorldBounds { get; private set; }
+
+    /// <summary>Column count of the last generated maze (after odd-rounding).</summary>
+    public int Columns => _columns;
+
+    /// <summary>Row count of the last generated maze (after odd-rounding).</summary>
+    public int Rows => _rows;
+
+    /// <summary>Number of BreakableWall components currently alive under this maze root.</summary>
+    public int BreakableWallCount =>
+        _mazeRoot != null ? _mazeRoot.GetComponentsInChildren<BreakableWall>().Length : 0;
+
+    /// <summary>Number of Station components currently alive under this maze root.</summary>
+    public int StationCount =>
+        _mazeRoot != null ? _mazeRoot.GetComponentsInChildren<Station>().Length : 0;
 
     private void ComputeOrigin()
     {
@@ -163,6 +190,10 @@ public class MazeGenerator : MonoBehaviour
 
     private void Start()
     {
+        // Restore persisted grid dimensions, then populate the input fields.
+        _columns = PlayerPrefs.GetInt(PrefColumns, _columns);
+        _rows    = PlayerPrefs.GetInt(PrefRows,    _rows);
+        SyncInputFields();
         Generate();
     }
 
@@ -204,6 +235,51 @@ public class MazeGenerator : MonoBehaviour
         FitCameraToMaze();
 
         Debug.Log($"[MazeGenerator] Maze generated — {_columns}×{_rows} cells, seed={seed}.");
+    }
+
+    // ── Debug UI API ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Set the column count from a UI button or TMP InputField onEndEdit event.
+    /// Non-numeric or out-of-range input is ignored. Minimum value is 3.
+    /// Call Regenerate() afterward (or wire the InputField's onEndEdit directly to
+    /// SetColumns and a separate button to Regenerate).
+    /// </summary>
+    public void SetColumns(string value)
+    {
+        if (!int.TryParse(value, out int parsed)) return;
+        _columns = Mathf.Max(3, parsed);
+        PlayerPrefs.SetInt(PrefColumns, _columns);
+        PlayerPrefs.Save();
+        SyncInputFields();
+        Debug.Log($"[MazeGenerator] Columns set to {_columns}.");
+    }
+
+    /// <summary>
+    /// Set the row count from a UI button or TMP InputField onEndEdit event.
+    /// Non-numeric or out-of-range input is ignored. Minimum value is 3.
+    /// </summary>
+    public void SetRows(string value)
+    {
+        if (!int.TryParse(value, out int parsed)) return;
+        _rows = Mathf.Max(3, parsed);
+        PlayerPrefs.SetInt(PrefRows, _rows);
+        PlayerPrefs.Save();
+        SyncInputFields();
+        Debug.Log($"[MazeGenerator] Rows set to {_rows}.");
+    }
+
+    /// <summary>
+    /// Regenerates the maze with the current settings.
+    /// Wire directly to a UI Button's OnClick event.
+    /// </summary>
+    public void Regenerate() => Generate();
+
+    /// <summary>Pushes the current _columns and _rows values into the input fields.</summary>
+    private void SyncInputFields()
+    {
+        if (_columnsInputField != null) _columnsInputField.text = _columns.ToString();
+        if (_rowsInputField    != null) _rowsInputField.text    = _rows.ToString();
     }
 
     /// <summary>
