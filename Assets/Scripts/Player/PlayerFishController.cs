@@ -62,6 +62,7 @@ public class PlayerFishController : MonoBehaviour
     [Tooltip("Degrees per second the mesh rotates toward its target orientation.")]
     [SerializeField] private float _rotationSpeed = 180f;
 
+
     [Header("Wiggle")]
     [Tooltip("Max wiggle angle added to Y (side-to-side tail wag) while moving.")]
     [SerializeField] private float _wiggleAmplitudeY = 15f;

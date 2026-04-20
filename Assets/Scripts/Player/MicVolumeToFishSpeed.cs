@@ -54,6 +54,19 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     [Tooltip("Seconds for speed to fall back to min after volume drops. Larger = speed lingers longer.")]
     [SerializeField] private float _decayTime = 2.5f;
 
+    [Header("Camera Background Color")]
+    [Tooltip("Enable background color lerping based on speed.")]
+    public bool enableColorLerp = true;
+
+    [Tooltip("Camera whose background solid color is lerped by speed. Leave unassigned to skip.")]
+    public Camera backgroundCamera;
+
+    [Tooltip("Background color when fish speed is at minimum.")]
+    public Color bgColorMin = Color.black;
+
+    [Tooltip("Background color when fish speed is at maximum.")]
+    public Color bgColorMax = new Color(0.1f, 0.2f, 0.5f);
+
     [Header("Debug (read-only)")]
     [Tooltip("True while the startup ambient sample is being collected.")]
     [SerializeField] private bool  _isCalibrating;
@@ -67,11 +80,19 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     [SerializeField] private float _debugMaxVolume;
     [Tooltip("Current fish speed being applied.")]
     [SerializeField] private float _debugCurrentSpeed;
+    [Tooltip("0–1 value fed into the background color lerp. 0 = bgColorMin, 1 = bgColorMax.")]
+    [SerializeField] private float _debugColorT;
 
     // ── Public ────────────────────────────────────────────────────────────────
 
     /// <summary>The smoothed fish speed currently being applied.</summary>
     public float CurrentSpeed => _smoothedSpeed;
+
+    /// <summary>The configured minimum fish speed (maps to silence).</summary>
+    public float MinSpeed => _minSpeed;
+
+    /// <summary>The configured maximum fish speed (maps to loudest input).</summary>
+    public float MaxSpeed => _maxSpeed;
 
     /// <summary>True while the initial ambient calibration is running.</summary>
     public bool IsCalibrating => _isCalibrating;
@@ -109,23 +130,41 @@ public class MicVolumeToFishSpeed : MonoBehaviour
         if (_isCalibrating || _spectrum == null || !_spectrum.isEnabled)
         {
             _smoothedSpeed = _minSpeed;
-            return;
+        }
+        else
+        {
+            float volume = ComputeRMSVolume(_spectrum.spectrumOutputData);
+            float targetSpeed = MapVolumeToSpeed(volume);
+
+            // Frame-rate-independent exponential smoothing.
+            // t = 1 - exp(-dt / halfLife) approximates a proper RC filter.
+            // Attack and decay use separate time constants so high speed lingers.
+            float timeConstant = targetSpeed > _smoothedSpeed ? _attackTime : _decayTime;
+            float t = 1f - Mathf.Exp(-Time.deltaTime / Mathf.Max(timeConstant, 0.001f));
+            _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, targetSpeed, t);
+
+            _debugCurrentVolume = volume;
+            _debugCurrentSpeed  = _smoothedSpeed;
+            _debugMinVolume     = _minVolume;
+            _debugMaxVolume     = _maxVolume;
         }
 
-        float volume = ComputeRMSVolume(_spectrum.spectrumOutputData);
-        float targetSpeed = MapVolumeToSpeed(volume);
+        // Always update — runs even during calibration so the color
+        // is visible and starts at bgColorMin immediately.
+        UpdateBackgroundColor();
+    }
 
-        // Frame-rate-independent exponential smoothing.
-        // t = 1 - exp(-dt / halfLife) approximates a proper RC filter.
-        // Attack and decay use separate time constants so high speed lingers.
-        float timeConstant = targetSpeed > _smoothedSpeed ? _attackTime : _decayTime;
-        float t = 1f - Mathf.Exp(-Time.deltaTime / Mathf.Max(timeConstant, 0.001f));
-        _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, targetSpeed, t);
+    private void UpdateBackgroundColor()
+    {
+        if (!enableColorLerp || backgroundCamera == null) return;
 
-        _debugCurrentVolume = volume;
-        _debugCurrentSpeed  = _smoothedSpeed;
-        _debugMinVolume     = _minVolume;
-        _debugMaxVolume     = _maxVolume;
+        // Force Solid Color so the tint is actually visible.
+        if (backgroundCamera.clearFlags != CameraClearFlags.SolidColor)
+            backgroundCamera.clearFlags = CameraClearFlags.SolidColor;
+
+        float t = Mathf.InverseLerp(_minSpeed, _maxSpeed, _smoothedSpeed);
+        _debugColorT = t;
+        backgroundCamera.backgroundColor = Color.Lerp(bgColorMin, bgColorMax, t);
     }
 
     // ── Calibration ───────────────────────────────────────────────────────────
