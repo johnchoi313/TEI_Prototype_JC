@@ -136,14 +136,14 @@ public class PlayerLightController : MonoBehaviour
         if (_controlScheme == ControlScheme.Player1_WASD)
         {
             return new Vector2(
-                (Input.GetKey(KeyCode.D) ? 1f : 0f) - (Input.GetKey(KeyCode.A) ? 1f : 0f),
+                (Input.GetKey(KeyCode.A) ? 1f : 0f) - (Input.GetKey(KeyCode.D) ? 1f : 0f),
                 (Input.GetKey(KeyCode.W) ? 1f : 0f) - (Input.GetKey(KeyCode.S) ? 1f : 0f)
             );
         }
         else
         {
             return new Vector2(
-                (Input.GetKey(KeyCode.RightArrow) ? 1f : 0f) - (Input.GetKey(KeyCode.LeftArrow)  ? 1f : 0f),
+                (Input.GetKey(KeyCode.LeftArrow)  ? 1f : 0f) - (Input.GetKey(KeyCode.RightArrow) ? 1f : 0f),
                 (Input.GetKey(KeyCode.UpArrow)    ? 1f : 0f) - (Input.GetKey(KeyCode.DownArrow)  ? 1f : 0f)
             );
         }

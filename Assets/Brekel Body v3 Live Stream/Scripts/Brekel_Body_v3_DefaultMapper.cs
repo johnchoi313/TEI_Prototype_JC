@@ -48,7 +48,7 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     public GameObject face_mesh;
 
     [Header("Visuals (optional)")]
-    [Tooltip("If set, applies this Material to the Renderer on every assigned joint Transform")]
+    [Tooltip("If set, applies this Material to all Renderers found in the character hierarchy")]
     public Material jointMaterial;
 
     // -------------------------------------------------------------------------
@@ -83,6 +83,11 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     private Quaternion[]        _offsets = new Quaternion[(int)Brekel_joint_name_v3.numJoints];
     private SkinnedMeshRenderer _faceSMR;
     private const int           NumBlendshapes = (int)Brekel_blendshape_name.numBlendshapes;
+
+    private float _lastDataTimestamp  = float.MinValue;
+    private float _noDataTimer        = 0f;
+    private bool  _characterVisible   = true;
+    private const float NoDataHideDelay = 2f;
 
     /// <summary>
     /// Returns the inverse bind-pose rotation for the given joint index.
@@ -124,6 +129,23 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
         BrekelBodyFrame body = receiver.GetBody(body_ID);
         if (body == null)
             return;
+
+        // Detect whether fresh data is arriving by watching the frame timestamp.
+        bool freshData = !Mathf.Approximately(body.timestamp, _lastDataTimestamp);
+        if (freshData)
+        {
+            _lastDataTimestamp = body.timestamp;
+            _noDataTimer = 0f;
+            SetCharacterVisible(true);
+        }
+        else
+        {
+            _noDataTimer += Time.deltaTime;
+            if (_noDataTimer >= NoDataHideDelay)
+                SetCharacterVisible(false);
+        }
+
+        if (!_characterVisible) return;
 
         ApplyJoint(hips,       Brekel_joint_name_v3.waist,       true,                body);
         ApplyJoint(spine,      Brekel_joint_name_v3.spine,       applyPositionsToAll, body);
@@ -242,30 +264,29 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     // =========================================================================
     //  Joint material
     // =========================================================================
-    [ContextMenu("Apply Joint Material")]
+    [ContextMenu("Apply Material")]
     public void ApplyJointMaterial()
     {
         if (jointMaterial == null)
         {
-            Debug.LogWarning("[DefaultMapper] Apply Joint Material: no Material assigned.");
+            Debug.LogWarning("[DefaultMapper] Apply Material: no Material assigned.");
             return;
         }
 
-        Transform[] joints =
+        if (character == null)
         {
-            hips, spine, chest, neck, head,
-            upperLeg_L, lowerLeg_L, foot_L,
-            upperLeg_R, lowerLeg_R, foot_R,
-            collar_L, upperArm_L, foreArm_L, hand_L,
-            collar_R, upperArm_R, foreArm_R, hand_R,
-        };
-
-        foreach (Transform t in joints)
-        {
-            if (t == null) continue;
-            Renderer r = t.GetComponent<Renderer>();
-            if (r != null) r.material = jointMaterial;
+            Debug.LogWarning("[DefaultMapper] Apply Material: no Character assigned.");
+            return;
         }
+
+        int count = 0;
+        foreach (Renderer r in character.GetComponentsInChildren<Renderer>(true))
+        {
+            r.material = jointMaterial;
+            count++;
+        }
+
+        Debug.Log($"[DefaultMapper] Apply Material: set '{jointMaterial.name}' on {count} Renderer(s) in '{character.name}'.");
     }
 
 
@@ -300,5 +321,12 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     {
         if (t != null)
             _offsets[(int)joint] = Quaternion.Inverse(t.localRotation);
+    }
+
+    private void SetCharacterVisible(bool visible)
+    {
+        if (_characterVisible == visible) return;
+        _characterVisible = visible;
+        if (character != null) character.SetActive(visible);
     }
 }

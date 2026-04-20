@@ -36,6 +36,9 @@ public class PlayerFishController : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float _drag = 0.85f;
 
+    [Tooltip("Distance at which the fish is considered to have reached the target and stops moving.")]
+    [SerializeField] private float _arrivalThreshold = 1f;
+
     [Header("Line of Sight")]
     [Tooltip("Layer(s) whose colliders block line-of-sight. Set to your maze wall layer.")]
     [SerializeField] private LayerMask _wallLayerMask = ~0;
@@ -90,15 +93,22 @@ public class PlayerFishController : MonoBehaviour
     {
         if (_target == null || !IsInRange() || !HasLineOfSight())
         {
-            // No valid target — bleed velocity to zero.
             _rb.linearVelocity *= 1f - _drag * Time.fixedDeltaTime;
+            return;
+        }
+
+        if (HasArrived())
+        {
+            _rb.linearVelocity = Vector3.zero;
             return;
         }
 
         Vector3 toTarget = _target.position - transform.position;
         toTarget.z = 0f;
 
-        _rb.linearVelocity = toTarget.normalized * _followSpeed;
+        float dist = toTarget.magnitude;
+        float speed = Mathf.Min(_followSpeed, dist / Time.fixedDeltaTime);
+        _rb.linearVelocity = toTarget.normalized * speed;
     }
 
     // ── Mesh rotation ─────────────────────────────────────────────────────────
@@ -139,6 +149,13 @@ public class PlayerFishController : MonoBehaviour
         Vector3 delta = _target.position - transform.position;
         delta.z = 0f;
         return delta.sqrMagnitude <= _followRadius * _followRadius;
+    }
+
+    private bool HasArrived()
+    {
+        Vector3 delta = _target.position - transform.position;
+        delta.z = 0f;
+        return delta.sqrMagnitude <= _arrivalThreshold * _arrivalThreshold;
     }
 
     /// <summary>
