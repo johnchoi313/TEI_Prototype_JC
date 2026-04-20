@@ -20,8 +20,7 @@ using UnityEngine;
 /// SCENE SETUP
 ///   1. Create an empty GameObject (e.g. "MazeManager") in the scene.
 ///   2. Attach this component to it.
-///   3. Assign spawnPointPrefab (must have SpawnPointMarker) and
-///      problemPocketPrefab (must have ProblemSpawnPocket) in the Inspector.
+///   3. Assign player light/fish references in the Inspector.
 ///   4. Tune grid size, cellSize, wallThickness, center, seed, wall material,
 ///      breakableWallMaterial, breakableWallRatio (fraction of carved corridors
 ///      re-sealed as breakable — higher values mean more paths are blocked),
@@ -88,6 +87,10 @@ public class MazeGenerator : MonoBehaviour
     [Tooltip("One station is placed per this many passage cells. E.g. 10 = one station every 10 open cells.")]
     [SerializeField] private int _stationCellsPerStation = 10;
 
+    [Tooltip("Station sphere diameter as a fraction of cell size. 0.3 = 30% of cell width (fits comfortably in a corridor).")]
+    [Range(0.1f, 1f)]
+    [SerializeField] private float _stationSizeRatio = 0.3f;
+
     // ── Camera ────────────────────────────────────────────────────────────────
 
     [Header("Camera")]
@@ -96,21 +99,6 @@ public class MazeGenerator : MonoBehaviour
 
     [Tooltip("Extra world-unit padding added on each side so walls aren't clipped by the viewport edge.")]
     [SerializeField] private float _cameraMargin = 1f;
-
-    // ── Spawn points ──────────────────────────────────────────────────────────
-
-    [Header("Spawn Points")]
-    [Tooltip("Prefab with a SpawnPointMarker component. Two are placed automatically (P1 and P2).")]
-    [SerializeField] private GameObject _spawnPointPrefab = null;
-
-    // ── Problem pockets ───────────────────────────────────────────────────────
-
-    [Header("Problem Pockets")]
-    [Tooltip("Prefab with a ProblemSpawnPocket component.")]
-    [SerializeField] private GameObject _problemPocketPrefab = null;
-
-    [Tooltip("Number of ProblemSpawnPocket objects to place in the maze.")]
-    [SerializeField] private int _problemPocketCount = 8;
 
     // ── Players ───────────────────────────────────────────────────────────────
 
@@ -228,8 +216,6 @@ public class MazeGenerator : MonoBehaviour
         BuildWalls();            // pillars + beams for every wall cell
 
         ApplyBoundsToLights();
-        PlaceSpawnPoints();
-        PlaceProblemPockets();
         PlaceStations();
         PlacePlayers();
         FitCameraToMaze();
@@ -548,86 +534,6 @@ public class MazeGenerator : MonoBehaviour
             cube.AddComponent<BreakableWall>();
     }
 
-    // ── Spawn point placement ─────────────────────────────────────────────────
-
-    private void PlaceSpawnPoints()
-    {
-        if (_spawnPointPrefab == null)
-        {
-            Debug.LogWarning("[MazeGenerator] No spawnPointPrefab assigned — skipping spawn point placement.", this);
-            return;
-        }
-
-        List<Vector2Int> candidates = GetDeadEndCells();
-        ShuffleList(candidates);
-
-        // Fall back to all passage cells if dead-ends are scarce.
-        if (candidates.Count < 2)
-        {
-            candidates = GetAllPassageCells();
-            ShuffleList(candidates);
-        }
-
-        GameObject spawnParent = new GameObject("SpawnPoints");
-        spawnParent.transform.SetParent(_mazeRoot.transform);
-
-        PlayerIndex[] players = new[] { PlayerIndex.Player1, PlayerIndex.Player2 };
-
-        for (int i = 0; i < 2 && i < candidates.Count; i++)
-        {
-            Vector3 pos = CellToWorld(candidates[i].x, candidates[i].y);
-            GameObject go = Instantiate(_spawnPointPrefab, pos, Quaternion.identity, spawnParent.transform);
-            go.name = $"SpawnPoint_P{i + 1}";
-
-            SpawnPointMarker marker = go.GetComponent<SpawnPointMarker>();
-            if (marker != null)
-                marker.player = players[i];
-        }
-    }
-
-    // ── Problem pocket placement ───────────────────────────────────────────────
-
-    private void PlaceProblemPockets()
-    {
-        if (_problemPocketPrefab == null)
-        {
-            Debug.LogWarning("[MazeGenerator] No problemPocketPrefab assigned — skipping pocket placement.", this);
-            return;
-        }
-
-        // Use dead-ends but skip the first two (reserved for spawn points).
-        List<Vector2Int> deadEnds = GetDeadEndCells();
-        ShuffleList(deadEnds);
-
-        List<Vector2Int> candidates = new List<Vector2Int>(deadEnds);
-
-        // If not enough dead-ends, pad with other passage cells.
-        if (candidates.Count < _problemPocketCount + 2)
-        {
-            List<Vector2Int> allPassage = GetAllPassageCells();
-            ShuffleList(allPassage);
-            foreach (Vector2Int cell in allPassage)
-            {
-                if (!candidates.Contains(cell))
-                    candidates.Add(cell);
-            }
-        }
-
-        // Skip the first two dead-ends (used by spawn points).
-        int startIndex = Mathf.Min(2, candidates.Count);
-
-        GameObject pocketParent = new GameObject("ProblemPockets");
-        pocketParent.transform.SetParent(_mazeRoot.transform);
-
-        int placed = 0;
-        for (int i = startIndex; i < candidates.Count && placed < _problemPocketCount; i++, placed++)
-        {
-            Vector3 pos = CellToWorld(candidates[i].x, candidates[i].y);
-            GameObject go = Instantiate(_problemPocketPrefab, pos, Quaternion.identity, pocketParent.transform);
-            go.name = $"ProblemPocket_{placed}";
-        }
-    }
-
     // ── Station placement ─────────────────────────────────────────────────────
 
     /// <summary>
@@ -645,9 +551,9 @@ public class MazeGenerator : MonoBehaviour
 
         int stationCount = Mathf.Max(1, passages.Count / _stationCellsPerStation);
 
-        // Reserve the first few cells for spawn points and problem pockets so
-        // stations don't overlap them (mirrors the reservation logic in those methods).
-        int reservedForOthers = 2 + _problemPocketCount;
+        // Reserve the first two cells for player placement so stations don't
+        // spawn on the same cells PlacePlayers() will teleport players to.
+        int reservedForOthers = 2;
         List<Vector2Int> candidates = new List<Vector2Int>();
         for (int i = reservedForOthers; i < passages.Count; i++)
             candidates.Add(passages[i]);
@@ -655,7 +561,7 @@ public class MazeGenerator : MonoBehaviour
         stationCount = Mathf.Min(stationCount, candidates.Count);
         if (stationCount == 0) return;
 
-        float sphereRadius = _cellSize * 0.3f;
+        float sphereRadius = _cellSize * _stationSizeRatio;
 
         GameObject stationParent = new GameObject("Stations");
         stationParent.transform.SetParent(_mazeRoot.transform);

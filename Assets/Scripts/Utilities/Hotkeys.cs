@@ -12,6 +12,7 @@ using UnityEngine;
 /// Shift+L     — Toggle visibility of the Logger UI panel.
 /// Shift+A     — Show all / hide all UI panels (Mic, FPS, Logger, Kinect).
 /// Shift+Space — Start / stop logging (calls Logger.StartLogging / StopLogging).
+/// Shift+R     — Regenerate the maze. Stops logging first if a session is active.
 /// Tab         — Swap fish abilities between players (BreakWall ↔ CollectStation).
 ///
 /// All visibility states are saved to PlayerPrefs and restored on next run.
@@ -44,6 +45,10 @@ public class Hotkeys : MonoBehaviour
     [Header("Shift+Space — Logger Start / Stop")]
     [Tooltip("Logger component to start/stop via Shift+Space.")]
     public Logger logger;
+
+    [Header("Shift+R — Regenerate Maze")]
+    [Tooltip("MazeGenerator to regenerate via Shift+R. Stops active logging first.")]
+    public MazeGenerator mazeGenerator;
 
     [Header("Shift+L — Logger UI Toggle")]
     [Tooltip("The Logger UI panel to show/hide when Shift+L is pressed.")]
@@ -136,6 +141,9 @@ public class Hotkeys : MonoBehaviour
         if (shift && Input.GetKeyDown(KeyCode.A))
             ToggleShowAll();
 
+        if (shift && Input.GetKeyDown(KeyCode.R))
+            RegenerateMaze();
+
         if (Input.GetKeyDown(KeyCode.Tab))
             SwapAbilities();
     }
@@ -227,6 +235,24 @@ public class Hotkeys : MonoBehaviour
         PlayerPrefs.Save();
 
         Debug.Log($"[Hotkeys] Kinect UI {(_kinectVisible ? "shown" : "hidden")} (Shift+K).");
+    }
+
+    private void RegenerateMaze()
+    {
+        if (mazeGenerator == null)
+        {
+            Debug.LogWarning("[Hotkeys] Cannot regenerate — assign a MazeGenerator (Shift+R).");
+            return;
+        }
+
+        if (logger != null && logger.IsLogging)
+        {
+            logger.StopLogging();
+            Debug.Log("[Hotkeys] Logging stopped before maze regeneration (Shift+R).");
+        }
+
+        mazeGenerator.Regenerate();
+        Debug.Log("[Hotkeys] Maze regenerated (Shift+R).");
     }
 
     private void SwapAbilities()

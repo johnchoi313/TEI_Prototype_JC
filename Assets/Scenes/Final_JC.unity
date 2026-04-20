@@ -2866,7 +2866,8 @@ MonoBehaviour:
   lightA: {fileID: 8884176492843219149}
   lightB: {fileID: 7760214337233059774}
   micDriver: {fileID: 2005540834}
-  scoreTracker: {fileID: 0}
+  scoreTracker: {fileID: 459962543}
+  mazeGenerator: {fileID: 950016887}
   _debugText: {fileID: 1770685992}
   _notRecordingIndicator: {fileID: 1062931060}
   _saveFolder: 
@@ -3229,15 +3230,15 @@ MonoBehaviour:
   _breakableWallRatio: 0.2
   _stationMaterial: {fileID: 2100000, guid: 04ed99fabfc72a84eb97b2d6d9a9a22f, type: 2}
   _stationCellsPerStation: 8
+  _stationSizeRatio: 0.2
   _mazeCamera: {fileID: 1076206474}
   _cameraMargin: 1
-  _spawnPointPrefab: {fileID: 0}
-  _problemPocketPrefab: {fileID: 0}
-  _problemPocketCount: 8
   _p1Light: {fileID: 8884176492843219149}
   _p1Fish: {fileID: 2845077376857192512}
   _p2Light: {fileID: 7760214337233059774}
   _p2Fish: {fileID: 3999337673812770611}
+  _columnsInputField: {fileID: 803451248}
+  _rowsInputField: {fileID: 1450044209}
 --- !u!1 &956885957
 GameObject:
   m_ObjectHideFlags: 0
@@ -4829,6 +4830,7 @@ MonoBehaviour:
   micDebugUI: {fileID: 1598892121}
   fpsDisplay: {fileID: 844151420}
   logger: {fileID: 818464105}
+  mazeGenerator: {fileID: 950016887}
   loggerUI: {fileID: 170897625}
   player1Controller: {fileID: 8884176492843219149}
   player2Controller: {fileID: 7760214337233059774}
