@@ -47,6 +47,10 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     [Tooltip("Fish speed when volume is at or above maxVolume.")]
     [SerializeField] private float _maxSpeed = 10f;
 
+    [Tooltip("Constant speed sent to fish controllers when mic is set to None. " +
+             "Should match the default Follow Speed on PlayerFishController.")]
+    [SerializeField] private float _disabledSpeed = 4f;
+
     [Header("Smoothing")]
     [Tooltip("Seconds for speed to rise from min to max when volume spikes. Smaller = snappier attack.")]
     [SerializeField] private float _attackTime = 0.08f;
@@ -85,8 +89,25 @@ public class MicVolumeToFishSpeed : MonoBehaviour
 
     // ── Public ────────────────────────────────────────────────────────────────
 
-    /// <summary>The smoothed fish speed currently being applied.</summary>
-    public float CurrentSpeed => _smoothedSpeed;
+    /// <summary>
+    /// The smoothed fish speed currently being applied.
+    /// Returns DisabledSpeed as a constant when mic is set to None.
+    /// </summary>
+    public float CurrentSpeed => _isMicDisabled ? _disabledSpeed : _smoothedSpeed;
+
+    /// <summary>
+    /// Enables or disables mic-driven speed. When disabled, CurrentSpeed
+    /// returns the constant DisabledSpeed and SimpleSpectrum is turned off.
+    /// Called by SimpleSpectrumMicDebugUI when None is selected.
+    /// </summary>
+    public void SetMicDisabled(bool disabled)
+    {
+        _isMicDisabled = disabled;
+        if (_spectrum != null)
+            _spectrum.isEnabled = !disabled;
+        if (disabled)
+            _smoothedSpeed = _disabledSpeed;
+    }
 
     /// <summary>Raw RMS volume from the spectrum this frame (0–1).</summary>
     public float CurrentRMS => _debugCurrentVolume;
@@ -100,6 +121,9 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     /// <summary>True while the initial ambient calibration is running.</summary>
     public bool IsCalibrating => _isCalibrating;
 
+    /// <summary>True when mic has been set to None — CurrentSpeed returns DisabledSpeed.</summary>
+    public bool IsMicDisabled => _isMicDisabled;
+
     /// <summary>
     /// Re-runs the ambient noise calibration (e.g. after switching microphone).
     /// Fish stays at minimum speed during the sample window.
@@ -111,6 +135,7 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     private float _smoothedSpeed;
     private float _minVolume;
     private float _maxVolume;
+    private bool  _isMicDisabled;
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -130,6 +155,13 @@ public class MicVolumeToFishSpeed : MonoBehaviour
 
     private void Update()
     {
+        if (_isMicDisabled)
+        {
+            _smoothedSpeed = _disabledSpeed;
+            UpdateBackgroundColor();
+            return;
+        }
+
         if (_isCalibrating || _spectrum == null || !_spectrum.isEnabled)
         {
             _smoothedSpeed = _minSpeed;

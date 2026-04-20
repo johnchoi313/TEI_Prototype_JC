@@ -27,7 +27,8 @@ using UnityEngine.UI;
 /// </summary>
 public class SimpleSpectrumMicDebugUI : MonoBehaviour
 {
-    private const string PREF_KEY_MIC = "SimpleSpectrum_SelectedMic";
+    private const string PREF_KEY_MIC  = "SimpleSpectrum_SelectedMic";
+    private const string NONE_SENTINEL = "__NONE__";
 
     [Header("References")]
     [Tooltip("The SimpleSpectrum instance configured with SourceType = MicrophoneInput.")]
@@ -69,16 +70,20 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
 
     private void Update()
     {
-        if (_spectrum == null) return;
-
-        bool calibrating = _micToSpeed != null && _micToSpeed.IsCalibrating;
+        bool micOff       = _micToSpeed != null && _micToSpeed.IsMicDisabled;
+        bool calibrating  = !micOff && _micToSpeed != null && _micToSpeed.IsCalibrating;
 
         // Volume cell
         if (_volumeLabel != null)
         {
-            _volumeLabel.text = calibrating
-                ? "Calibrating..."
-                : $"Vol: {ComputeRMSVolume(_spectrum.spectrumOutputData):F3}";
+            if (micOff)
+                _volumeLabel.text = "Mic: OFF";
+            else if (_spectrum == null)
+                _volumeLabel.text = string.Empty;
+            else
+                _volumeLabel.text = calibrating
+                    ? "Calibrating..."
+                    : $"Vol: {ComputeRMSVolume(_spectrum.spectrumOutputData):F3}";
         }
 
         // Speed cell
@@ -103,6 +108,10 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
         var options = new List<TMP_Dropdown.OptionData>();
         var names   = new List<string>();
 
+        // None — disables mic entirely, fish runs at constant default speed.
+        options.Add(new TMP_Dropdown.OptionData("None (Mic Off)"));
+        names.Add(NONE_SENTINEL);
+
         options.Add(new TMP_Dropdown.OptionData("Default Microphone"));
         names.Add(null); // null = system default in SimpleSpectrum
 
@@ -124,27 +133,37 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
 
         string saved = PlayerPrefs.GetString(PREF_KEY_MIC);
 
-        int index = 0;
+        // Empty string was previously used for "default mic" — keep compatible.
+        if (string.IsNullOrEmpty(saved)) saved = null;
+
+        int index = 1; // fallback to Default Microphone (index 1)
         for (int i = 0; i < _deviceNames.Length; i++)
         {
             if (_deviceNames[i] == saved) { index = i; break; }
         }
 
         _micDropdown.SetValueWithoutNotify(index);
-        ApplyMicDevice(_deviceNames[index]);
+        ApplySelection(_deviceNames[index]);
     }
 
     private void OnMicSelected(int index)
     {
         string deviceName = _deviceNames[index];
-        ApplyMicDevice(deviceName);
+        ApplySelection(deviceName);
 
         PlayerPrefs.SetString(PREF_KEY_MIC, deviceName ?? string.Empty);
         PlayerPrefs.Save();
     }
 
-    private void ApplyMicDevice(string deviceName)
+    private void ApplySelection(string deviceName)
     {
+        bool isNone = deviceName == NONE_SENTINEL;
+
+        if (_micToSpeed != null)
+            _micToSpeed.SetMicDisabled(isNone);
+
+        if (isNone) return;
+
         if (_spectrum == null) return;
 
         _spectrum.overrideMicrophoneName = deviceName;
