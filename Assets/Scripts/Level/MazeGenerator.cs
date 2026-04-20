@@ -21,7 +21,10 @@ using UnityEngine;
 ///   2. Attach this component to it.
 ///   3. Assign spawnPointPrefab (must have SpawnPointMarker) and
 ///      problemPocketPrefab (must have ProblemSpawnPocket) in the Inspector.
-///   4. Tune grid size, cellSize, wallThickness, center, seed, and wall material.
+///   4. Tune grid size, cellSize, wallThickness, center, seed, wall material,
+///      breakableWallMaterial, breakableWallRatio (fraction of carved corridors
+///      re-sealed as breakable — higher values mean more paths are blocked),
+///      stationMaterial, and stationCellsPerStation.
 ///   5. Press Play — the maze generates automatically in Start().
 ///   6. Right-click the component header → "Generate Maze" to preview in Edit mode.
 ///      Right-click → "Clear Maze" to destroy the preview.
@@ -62,8 +65,27 @@ public class MazeGenerator : MonoBehaviour
     [Tooltip("Z depth of each wall cube. Keep small (e.g. 0.5) for a flat top-down look.")]
     [SerializeField] private float _wallDepth = 0.5f;
 
-    [Tooltip("Optional material applied to wall cubes. Leave null for Unity default.")]
+    [Tooltip("Optional material applied to solid (indestructible) wall cubes. Leave null for Unity default.")]
     [SerializeField] private Material _wallMaterial = null;
+
+    // ── Breakable walls ───────────────────────────────────────────────────────
+
+    [Header("Breakable Walls")]
+    [Tooltip("Material applied to breakable wall segments. Leave null to fall back to the regular wall material.")]
+    [SerializeField] private Material _breakableWallMaterial = null;
+
+    [Tooltip("Fraction of carved corridor segments re-sealed as breakable walls. 0 = fully open maze, 1 = every corridor blocked. ~0.3 gives a good challenge.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float _breakableWallRatio = 0.2f;
+
+    // ── Stations ──────────────────────────────────────────────────────────────
+
+    [Header("Stations")]
+    [Tooltip("Material applied to station spheres. Leave null for Unity default.")]
+    [SerializeField] private Material _stationMaterial = null;
+
+    [Tooltip("One station is placed per this many passage cells. E.g. 10 = one station every 10 open cells.")]
+    [SerializeField] private int _stationCellsPerStation = 10;
 
     // ── Camera ────────────────────────────────────────────────────────────────
 
@@ -107,7 +129,7 @@ public class MazeGenerator : MonoBehaviour
 
     // ── Runtime ───────────────────────────────────────────────────────────────
 
-    private enum CellType { Wall, Passage }
+    private enum CellType { Wall, Passage, BreakableWall }
 
     private CellType[,]   _grid;
     private System.Random _rng;
@@ -170,12 +192,14 @@ public class MazeGenerator : MonoBehaviour
         _mazeRoot.transform.localPosition = Vector3.zero;
 
         InitGrid();
-        RunPrims();       // carves passages into _grid
-        BuildWalls();     // pillars + beams for every wall cell
+        RunPrims();              // carves passages into _grid
+        MarkBreakableWalls();    // flags gap cells between passage nodes as breakable
+        BuildWalls();            // pillars + beams for every wall cell
 
         ApplyBoundsToLights();
         PlaceSpawnPoints();
         PlaceProblemPockets();
+        PlaceStations();
         PlacePlayers();
         FitCameraToMaze();
 
@@ -304,6 +328,51 @@ public class MazeGenerator : MonoBehaviour
 
     private bool InBounds(int c, int r) => c >= 0 && c < _columns && r >= 0 && r < _rows;
 
+    // ── Breakable wall marking ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Seals a random fraction of carved corridor segments with BreakableWall,
+    /// making the maze partially impassable until players break through.
+    ///
+    /// In Prim's odd-grid layout, even-indexed interior cells are "edge" cells —
+    /// each one connects exactly two odd-indexed node cells along one axis.
+    /// When Prim's CARVES an edge cell it becomes Passage (an open corridor segment).
+    /// Re-sealing a subset of those back to BreakableWall blocks real paths, since
+    /// those are the only cells that actually connect adjacent corridors.
+    ///
+    /// Node cells (odd-odd) and outer-ring cells are never touched so the pillar
+    /// grid and maze border remain solid and visually intact.
+    /// </summary>
+    private void MarkBreakableWalls()
+    {
+        if (_breakableWallRatio <= 0f) return;
+
+        // Collect every even-indexed interior Passage cell (carved corridor segments).
+        List<Vector2Int> corridorEdges = new List<Vector2Int>();
+        for (int c = 1; c < _columns - 1; c++)
+        {
+            for (int r = 1; r < _rows - 1; r++)
+            {
+                if (_grid[c, r] != CellType.Passage) continue;
+
+                // Edge cells are even on exactly one axis.
+                bool evenC = (c % 2 == 0);
+                bool evenR = (r % 2 == 0);
+                if (evenC == evenR) continue; // odd-odd (node) or even-even — skip
+
+                corridorEdges.Add(new Vector2Int(c, r));
+            }
+        }
+
+        ShuffleList(corridorEdges);
+
+        int sealCount = Mathf.RoundToInt(corridorEdges.Count * _breakableWallRatio);
+        for (int i = 0; i < sealCount; i++)
+            _grid[corridorEdges[i].x, corridorEdges[i].y] = CellType.BreakableWall;
+
+        Debug.Log($"[MazeGenerator] {sealCount} corridor segment(s) sealed as breakable walls from {corridorEdges.Count} candidate(s).");
+    }
+
     // ── Wall spawning ─────────────────────────────────────────────────────────
 
     /// <summary>
@@ -315,11 +384,15 @@ public class MazeGenerator : MonoBehaviour
     /// _wallThickness wide on the cross axis. Because we only emit beams in the
     /// +X and +Y directions, every pair of adjacent wall cells gets exactly one
     /// beam — no duplicates, no gaps, no overlapping geometry.
+    /// Both solid and breakable wall cells are treated as wall for beam-connection
+    /// purposes so the visual mesh stays continuous.
     /// </summary>
     private void BuildWalls()
     {
-        GameObject wallParent = new GameObject("Walls");
-        wallParent.transform.SetParent(_mazeRoot.transform);
+        GameObject solidParent     = new GameObject("Walls");
+        GameObject breakableParent = new GameObject("BreakableWalls");
+        solidParent.transform.SetParent(_mazeRoot.transform);
+        breakableParent.transform.SetParent(_mazeRoot.transform);
 
         float t = _wallThickness;
 
@@ -327,42 +400,76 @@ public class MazeGenerator : MonoBehaviour
         {
             for (int r = 0; r < _rows; r++)
             {
-                if (_grid[c, r] != CellType.Wall) continue;
+                if (!IsWallType(_grid[c, r])) continue;
+
+                bool isBreakable = _grid[c, r] == CellType.BreakableWall;
+                GameObject parent = isBreakable ? breakableParent : solidParent;
+                Material mat = isBreakable
+                    ? (_breakableWallMaterial != null ? _breakableWallMaterial : _wallMaterial)
+                    : _wallMaterial;
 
                 Vector3 pos = CellToWorld(c, r);
 
+                // Breakable corridor cells sit at even-indexed positions between two
+                // odd-indexed pillar cells. Each pillar is _cellSize away in grid
+                // space, so pillar-centre to pillar-centre = 2 * _cellSize. The beam
+                // must span that full distance to touch both flanking pillars flush.
+                if (isBreakable)
+                {
+                    bool evenC = (c % 2 == 0);
+                    if (evenC)
+                    {
+                        // Corridor runs along X; breakable wall seals it on the Y axis.
+                        SpawnWallCube(parent, $"BreakableBeam_{c}_{r}", pos,
+                            new Vector3(t, _cellSize * 2f, _wallDepth), mat, true);
+                    }
+                    else
+                    {
+                        // Corridor runs along Y; breakable wall seals it on the X axis.
+                        SpawnWallCube(parent, $"BreakableBeam_{c}_{r}", pos,
+                            new Vector3(_cellSize * 2f, t, _wallDepth), mat, true);
+                    }
+                    continue; // No pillar or neighbor-driven beams needed.
+                }
+
                 // Pillar
-                SpawnWallCube(wallParent, $"Pillar_{c}_{r}", pos,
-                    new Vector3(t, t, _wallDepth));
+                SpawnWallCube(parent, $"Pillar_{c}_{r}", pos,
+                    new Vector3(t, t, _wallDepth), mat, isBreakable);
 
                 // Beam rightward (+X) to (c+1, r)
-                if (InBounds(c + 1, r) && _grid[c + 1, r] == CellType.Wall)
+                if (InBounds(c + 1, r) && IsWallType(_grid[c + 1, r]))
                 {
                     Vector3 beamPos = pos + new Vector3(_cellSize * 0.5f, 0f, 0f);
-                    SpawnWallCube(wallParent, $"BeamH_{c}_{r}", beamPos,
-                        new Vector3(_cellSize, t, _wallDepth));
+                    SpawnWallCube(parent, $"BeamH_{c}_{r}", beamPos,
+                        new Vector3(_cellSize, t, _wallDepth), mat, isBreakable);
                 }
 
                 // Beam upward (+Y) to (c, r+1)
-                if (InBounds(c, r + 1) && _grid[c, r + 1] == CellType.Wall)
+                if (InBounds(c, r + 1) && IsWallType(_grid[c, r + 1]))
                 {
                     Vector3 beamPos = pos + new Vector3(0f, _cellSize * 0.5f, 0f);
-                    SpawnWallCube(wallParent, $"BeamV_{c}_{r}", beamPos,
-                        new Vector3(t, _cellSize, _wallDepth));
+                    SpawnWallCube(parent, $"BeamV_{c}_{r}", beamPos,
+                        new Vector3(t, _cellSize, _wallDepth), mat, isBreakable);
                 }
             }
         }
     }
 
-    private void SpawnWallCube(GameObject parent, string cubeName, Vector3 pos, Vector3 scale)
+    private static bool IsWallType(CellType t) =>
+        t == CellType.Wall || t == CellType.BreakableWall;
+
+    private void SpawnWallCube(GameObject parent, string cubeName, Vector3 pos, Vector3 scale,
+                               Material mat, bool breakable)
     {
         GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
         cube.name = cubeName;
         cube.transform.SetParent(parent.transform);
         cube.transform.position = pos;
         cube.transform.localScale = scale;
-        if (_wallMaterial != null)
-            cube.GetComponent<Renderer>().sharedMaterial = _wallMaterial;
+        if (mat != null)
+            cube.GetComponent<Renderer>().sharedMaterial = mat;
+        if (breakable)
+            cube.AddComponent<BreakableWall>();
     }
 
     // ── Spawn point placement ─────────────────────────────────────────────────
@@ -443,6 +550,53 @@ public class MazeGenerator : MonoBehaviour
             GameObject go = Instantiate(_problemPocketPrefab, pos, Quaternion.identity, pocketParent.transform);
             go.name = $"ProblemPocket_{placed}";
         }
+    }
+
+    // ── Station placement ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Spawns sphere-primitive stations in random passage cells.
+    /// Count = passage cells / _stationCellsPerStation (minimum 1 if any cells exist).
+    /// Cells already used for spawn points and problem pockets are excluded so
+    /// stations never visually stack with other objects.
+    /// </summary>
+    private void PlaceStations()
+    {
+        if (_stationCellsPerStation <= 0) return;
+
+        List<Vector2Int> passages = GetAllPassageCells();
+        ShuffleList(passages);
+
+        int stationCount = Mathf.Max(1, passages.Count / _stationCellsPerStation);
+
+        // Reserve the first few cells for spawn points and problem pockets so
+        // stations don't overlap them (mirrors the reservation logic in those methods).
+        int reservedForOthers = 2 + _problemPocketCount;
+        List<Vector2Int> candidates = new List<Vector2Int>();
+        for (int i = reservedForOthers; i < passages.Count; i++)
+            candidates.Add(passages[i]);
+
+        stationCount = Mathf.Min(stationCount, candidates.Count);
+        if (stationCount == 0) return;
+
+        float sphereRadius = _cellSize * 0.3f;
+
+        GameObject stationParent = new GameObject("Stations");
+        stationParent.transform.SetParent(_mazeRoot.transform);
+
+        for (int i = 0; i < stationCount; i++)
+        {
+            Vector3 pos = CellToWorld(candidates[i].x, candidates[i].y);
+            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.name = $"Station_{i}";
+            sphere.transform.SetParent(stationParent.transform);
+            sphere.transform.position = pos;
+            sphere.transform.localScale = Vector3.one * (sphereRadius * 2f);
+            if (_stationMaterial != null)
+                sphere.GetComponent<Renderer>().sharedMaterial = _stationMaterial;
+        }
+
+        Debug.Log($"[MazeGenerator] Placed {stationCount} station(s) from {candidates.Count} candidate cells.");
     }
 
     // ── Boundary setup ────────────────────────────────────────────────────────
