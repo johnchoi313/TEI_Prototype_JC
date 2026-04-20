@@ -26,15 +26,18 @@ using UnityEngine;
 /// </summary>
 public class PlayerLightController : MonoBehaviour
 {
-    public enum ControlScheme { Player1_WASD, Player2_ArrowKeys }
+    public enum ControlScheme { Player1_WASD, Player2_ArrowKeys, Kinect }
 
     [Header("Control")]
-    [Tooltip("Player1 uses WASD. Player2 uses Arrow Keys.")]
+    [Tooltip("Player1 uses WASD. Player2 uses Arrow Keys. Kinect uses body tracking.")]
     [SerializeField] private ControlScheme _controlScheme = ControlScheme.Player1_WASD;
+
+    [Tooltip("KinectPlayerController to read from when control scheme is set to Kinect")]
+    [SerializeField] private KinectPlayerController _kinectController;
 
     [Header("Movement")]
     [Tooltip("Maximum movement speed (wu/s).")]
-    [SerializeField] private float _maxSpeed = 8f;
+    [SerializeField] private float _maxSpeed = 4f;
 
     [Tooltip("How quickly the light accelerates to max speed (wu/s²).")]
     [SerializeField] private float _acceleration = 30f;
@@ -140,12 +143,17 @@ public class PlayerLightController : MonoBehaviour
                 (Input.GetKey(KeyCode.W) ? 1f : 0f) - (Input.GetKey(KeyCode.S) ? 1f : 0f)
             );
         }
-        else
+        else if (_controlScheme == ControlScheme.Player2_ArrowKeys)
         {
             return new Vector2(
                 (Input.GetKey(KeyCode.LeftArrow)  ? 1f : 0f) - (Input.GetKey(KeyCode.RightArrow) ? 1f : 0f),
                 (Input.GetKey(KeyCode.UpArrow)    ? 1f : 0f) - (Input.GetKey(KeyCode.DownArrow)  ? 1f : 0f)
             );
+        }
+        else // Kinect
+        {
+            if (_kinectController == null) return Vector2.zero;
+            return _kinectController.InputAxis;
         }
     }
 
