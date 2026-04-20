@@ -35,6 +35,13 @@ public class PlayerLightController : MonoBehaviour
     [Tooltip("KinectPlayerController to read from when control scheme is set to Kinect")]
     [SerializeField] private KinectPlayerController _kinectController;
 
+    /// <summary>Get or set the active control scheme at runtime (e.g. from Hotkeys).</summary>
+    public ControlScheme ActiveControlScheme
+    {
+        get => _controlScheme;
+        set => _controlScheme = value;
+    }
+
     [Header("Movement")]
     [Tooltip("Maximum movement speed (wu/s).")]
     [SerializeField] private float _maxSpeed = 4f;
