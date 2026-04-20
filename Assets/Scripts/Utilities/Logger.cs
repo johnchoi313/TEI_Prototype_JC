@@ -49,6 +49,10 @@ public class Logger : MonoBehaviour
     [Tooltip("MicVolumeToFishSpeed driver (provides CurrentRMS and CurrentSpeed)")]
     public MicVolumeToFishSpeed micDriver;
 
+    [Header("Score Reference")]
+    [Tooltip("ScoreTracker singleton — logs walls broken, stations collected, and ability swaps.")]
+    public ScoreTracker scoreTracker;
+
     [Header("Debug UI")]
     [Tooltip("Optional TMP text to display the current save path and logging status.")]
     [SerializeField] private TMP_Text _debugText;
@@ -96,10 +100,13 @@ public class Logger : MonoBehaviour
     private const int ColJumpB     = 9;
     private const int ColTrackedB  = 10;
     private const int ColFovB      = 11;
-    private const int ColRMS       = 12;
-    private const int ColFishSpeed = 13;
-    private const int ColCalib     = 14;
-    private const int NumCols      = 15;
+    private const int ColRMS            = 12;
+    private const int ColFishSpeed      = 13;
+    private const int ColCalib          = 14;
+    private const int ColWallsBroken    = 15;
+    private const int ColStationsCollected = 16;
+    private const int ColTimesSwapped   = 17;
+    private const int NumCols           = 18;
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -266,7 +273,8 @@ public class Logger : MonoBehaviour
         return "timestamp_ms," +
                "player_A_depth,player_A_input_x,player_A_input_y,player_A_jump,player_A_tracked,fov_A_size," +
                "player_B_depth,player_B_input_x,player_B_input_y,player_B_jump,player_B_tracked,fov_B_size," +
-               "ambient_sound_RMS,fish_speed,is_calibrating";
+               "ambient_sound_RMS,fish_speed,is_calibrating," +
+               "walls_broken,stations_collected,ability_swaps";
     }
 
     // ── Sampling ──────────────────────────────────────────────────────────────
@@ -304,6 +312,14 @@ public class Logger : MonoBehaviour
             row[ColRMS]       = micDriver.CurrentRMS;
             row[ColFishSpeed] = micDriver.CurrentSpeed;
             row[ColCalib]     = micDriver.IsCalibrating ? 1f : 0f;
+        }
+
+        ScoreTracker sc = scoreTracker != null ? scoreTracker : ScoreTracker.Instance;
+        if (sc != null)
+        {
+            row[ColWallsBroken]       = sc.WallsBroken;
+            row[ColStationsCollected] = sc.StationsCollected;
+            row[ColTimesSwapped]      = sc.TimesSwapped;
         }
 
         return row;
@@ -356,7 +372,13 @@ public class Logger : MonoBehaviour
         header.Append("mean_fov_A_size,max_fov_A_size,");
         header.Append("mean_fov_B_size,max_fov_B_size,");
         header.Append("mean_ambient_RMS,max_ambient_RMS,");
-        header.Append("mean_fish_speed,max_fish_speed");
+        header.Append("mean_fish_speed,max_fish_speed,");
+        header.Append("total_walls_broken,total_stations_collected,total_ability_swaps");
+
+        ScoreTracker sc = scoreTracker != null ? scoreTracker : ScoreTracker.Instance;
+        int finalWalls    = sc != null ? sc.WallsBroken       : 0;
+        int finalStations = sc != null ? sc.StationsCollected : 0;
+        int finalSwaps    = sc != null ? sc.TimesSwapped      : 0;
 
         data.Append(_sessionDate);        data.Append(',');
         data.Append(_sessionTime);        data.Append(',');
@@ -375,7 +397,10 @@ public class Logger : MonoBehaviour
         data.Append(means[ColRMS].ToString("F4"));      data.Append(',');
         data.Append(maxes[ColRMS].ToString("F4"));      data.Append(',');
         data.Append(means[ColFishSpeed].ToString("F4")); data.Append(',');
-        data.Append(maxes[ColFishSpeed].ToString("F4"));
+        data.Append(maxes[ColFishSpeed].ToString("F4")); data.Append(',');
+        data.Append(finalWalls);    data.Append(',');
+        data.Append(finalStations); data.Append(',');
+        data.Append(finalSwaps);
 
         try
         {

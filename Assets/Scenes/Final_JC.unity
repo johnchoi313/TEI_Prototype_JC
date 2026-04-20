@@ -1587,6 +1587,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _wallsBrokenText: {fileID: 1892749236}
   _stationsCollectedText: {fileID: 1578438893}
+  _timesSwappedText: {fileID: 0}
 --- !u!1 &478138382 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6849398777175452582, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
@@ -1889,26 +1890,14 @@ GameObject:
   m_Component:
   - component: {fileID: 620075027}
   - component: {fileID: 620075026}
-  - component: {fileID: 620075024}
+  - component: {fileID: 620075028}
   m_Layer: 3
-  m_Name: Kinect Camera
+  m_Name: Kinect Camera (And Kinect Ability Swap)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &620075024
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 620075023}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!20 &620075026
 Camera:
   m_ObjectHideFlags: 0
@@ -1975,6 +1964,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &620075028
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 620075023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1d68fa4cafca8942ad4ec7ccee0363c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _kinect1: {fileID: 520155237}
+  _kinect2: {fileID: 1975264713}
+  _player1Ability: {fileID: 2845077376857192518}
+  _player2Ability: {fileID: 3999337673812770617}
+  _touchDistance: 0.6
+  _separateDistance: 1.2
+  _player1Renderer: {fileID: 2030442011321096525}
+  _player2Renderer: {fileID: 1991361825}
+  _breakWallMaterial: {fileID: 2100000, guid: 36e4aa3a5d007fa4e8f1e28b5141cd65, type: 2}
+  _collectStationMaterial: {fileID: 2100000, guid: 04ed99fabfc72a84eb97b2d6d9a9a22f, type: 2}
 --- !u!1 &745022280 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3892051972333089325, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
@@ -2469,6 +2480,7 @@ MonoBehaviour:
   lightA: {fileID: 8884176492843219149}
   lightB: {fileID: 7760214337233059774}
   micDriver: {fileID: 2005540834}
+  scoreTracker: {fileID: 0}
   _debugText: {fileID: 1770685992}
   _notRecordingIndicator: {fileID: 1062931060}
   _saveFolder: 
@@ -5611,7 +5623,7 @@ GameObject:
   - component: {fileID: 1991361826}
   - component: {fileID: 1991361825}
   m_Layer: 6
-  m_Name: Torus
+  m_Name: Torus 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6191,6 +6203,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2133038661}
   - component: {fileID: 2133038660}
+  - component: {fileID: 2133038662}
   m_Layer: 0
   m_Name: Main Camera (FOVs)
   m_TagString: Untagged
@@ -6264,6 +6277,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &2133038662
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2133038657}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61842aa23e5d1d5448cded09c8563f7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _fadeInDuration: 0.05
+  _holdDuration: 0.05
+  _fadeOutDuration: 0.25
+  _peakAlpha: 0.85
 --- !u!1 &2140779834 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3892051972333089325, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
@@ -6683,7 +6712,7 @@ GameObject:
   - component: {fileID: 3244894527603998169}
   - component: {fileID: 2030442011321096525}
   m_Layer: 6
-  m_Name: Torus
+  m_Name: Torus 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

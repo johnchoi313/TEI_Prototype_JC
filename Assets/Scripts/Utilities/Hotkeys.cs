@@ -243,6 +243,8 @@ public class Hotkeys : MonoBehaviour
 
         ApplyAbilityMaterial(player1AbilityRenderer, player1Ability.CurrentAbilityType);
         ApplyAbilityMaterial(player2AbilityRenderer, player2Ability.CurrentAbilityType);
+        ScoreTracker.Instance?.AddSwap();
+        ScreenFlash.Instance?.Flash();
 
         Debug.Log($"[Hotkeys] Abilities swapped — P1: {player1Ability.CurrentAbilityType}, P2: {player2Ability.CurrentAbilityType} (Tab).");
     }
