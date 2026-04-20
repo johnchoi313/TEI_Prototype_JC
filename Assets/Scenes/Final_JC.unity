@@ -12194,8 +12194,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 711b21433ae51494aa70d039b9e62521, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  kinectObject1: {fileID: 620075023}
-  kinectObject2: {fileID: 115589293}
+  kinectObject: {fileID: 115589293}
   micDebugUI: {fileID: 1598892121}
   fpsDisplay: {fileID: 844151420}
   logger: {fileID: 818464105}

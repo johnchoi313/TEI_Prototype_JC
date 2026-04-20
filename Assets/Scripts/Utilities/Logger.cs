@@ -16,12 +16,14 @@ using UnityEngine;
 ///   4. The save folder is remembered across sessions via PlayerPrefs.
 ///
 /// FILE NAMING
-///   couch_game_YYYY-MM-DD_HH-MM_session[N].csv          — per-second rows
-///   couch_game_YYYY-MM-DD_HH-MM_session[N]_summary.csv  — single-row summary
+///   couch_game_YYYY-MM-DD_HH-MM_session[N].csv  — per-second rows (one file per session)
+///   couch_game_YYYY-MM-DD_summary.csv            — summary rows, one per session, all appended
 ///
 ///   Session [N] increments if a file for that timestamp already exists, so
 ///   re-opening the app within the same minute starts a fresh numbered file.
-///   Rows are appended, so a mid-session crash still preserves collected data.
+///   Per-second rows are appended, so a mid-session crash still preserves data.
+///   The summary file is shared across all sessions on the same date; a header
+///   row is written only when the file is first created.
 /// </summary>
 public class Logger : MonoBehaviour
 {
@@ -377,8 +379,12 @@ public class Logger : MonoBehaviour
 
         try
         {
-            File.WriteAllText(summaryPath, header.ToString() + "\n" + data.ToString(), Encoding.UTF8);
-            Debug.Log($"[Logger] Summary written → {summaryPath}");
+            bool needsHeader = !File.Exists(summaryPath);
+            using var sw = new StreamWriter(summaryPath, append: true, encoding: Encoding.UTF8);
+            if (needsHeader)
+                sw.WriteLine(header.ToString());
+            sw.WriteLine(data.ToString());
+            Debug.Log($"[Logger] Summary appended → {summaryPath}");
         }
         catch (Exception e)
         {
@@ -401,8 +407,8 @@ public class Logger : MonoBehaviour
         return Path.Combine(folder, $"couch_game_{date}_{time}_session{n}.csv");
     }
 
-    private static string BuildSummaryFilePath(string folder, string date, string time, int n)
+    private static string BuildSummaryFilePath(string folder, string date)
     {
-        return Path.Combine(folder, $"couch_game_{date}_{time}_session{n}_summary.csv");
+        return Path.Combine(folder, $"couch_game_{date}_summary.csv");
     }
 }

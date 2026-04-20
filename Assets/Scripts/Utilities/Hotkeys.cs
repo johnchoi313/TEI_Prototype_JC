@@ -21,9 +21,10 @@ public class Hotkeys : MonoBehaviour
     // ── PlayerPrefs keys ──────────────────────────────────────────────────────
     private const string PrefKinectUI     = "Hotkeys_KinectUI";
     private const string PrefMicUI        = "Hotkeys_MicUI";
-    private const string PrefFPS          = "Hotkeys_FPS";  // reused — key name unchanged
+    private const string PrefFPS          = "Hotkeys_FPS";
     private const string PrefLoggerUI     = "Hotkeys_LoggerUI";
     private const string PrefShowAll      = "Hotkeys_ShowAll";
+    private const string PrefUsingKinect  = "Hotkeys_UsingKinect";
 
     // ── Inspector references ──────────────────────────────────────────────────
 
@@ -76,9 +77,14 @@ public class Hotkeys : MonoBehaviour
         ApplyObject(fpsDisplay,   _fpsVisible    && _allVisible);
         ApplyObject(loggerUI,     _loggerVisible && _allVisible);
 
+        // Restore saved control scheme, then apply it to the controllers.
         PlayerLightController reference = player1Controller != null ? player1Controller : player2Controller;
-        if (reference != null)
-            _usingKinect = reference.ActiveControlScheme == PlayerLightController.ControlScheme.Kinect;
+        bool defaultKinect = reference != null && reference.ActiveControlScheme == PlayerLightController.ControlScheme.Kinect;
+        _usingKinect = PlayerPrefs.GetInt(PrefUsingKinect, defaultKinect ? 1 : 0) == 1;
+        SetPlayer(player1Controller, PlayerLightController.ControlScheme.Player1_WASD);
+        SetPlayer(player2Controller, PlayerLightController.ControlScheme.Player2_ArrowKeys);
+        if (sharedFOVBudget != null)
+            sharedFOVBudget.UseKinectDepth = _usingKinect;
     }
 
     private void Update()
@@ -206,6 +212,9 @@ public class Hotkeys : MonoBehaviour
         if (sharedFOVBudget != null)
             sharedFOVBudget.UseKinectDepth = _usingKinect;
 
+        PlayerPrefs.SetInt(PrefUsingKinect, _usingKinect ? 1 : 0);
+        PlayerPrefs.Save();
+
         Debug.Log($"[Hotkeys] Control scheme → {(_usingKinect ? "Kinect" : "Keyboard")} (Shift+C).");
     }
 
@@ -229,10 +238,11 @@ public class Hotkeys : MonoBehaviour
 
     private void LoadPrefs()
     {
-        _kinectVisible = PlayerPrefs.GetInt(PrefKinectUI,  1) == 1;
-        _micUIVisible  = PlayerPrefs.GetInt(PrefMicUI,     1) == 1;
-        _fpsVisible    = PlayerPrefs.GetInt(PrefFPS,       1) == 1;
-        _loggerVisible = PlayerPrefs.GetInt(PrefLoggerUI,  1) == 1;
-        _allVisible    = PlayerPrefs.GetInt(PrefShowAll,   1) == 1;
+        _kinectVisible = PlayerPrefs.GetInt(PrefKinectUI,   1) == 1;
+        _micUIVisible  = PlayerPrefs.GetInt(PrefMicUI,      1) == 1;
+        _fpsVisible    = PlayerPrefs.GetInt(PrefFPS,        1) == 1;
+        _loggerVisible = PlayerPrefs.GetInt(PrefLoggerUI,   1) == 1;
+        _allVisible    = PlayerPrefs.GetInt(PrefShowAll,    1) == 1;
+        // _usingKinect is loaded directly in Awake (needs Inspector fallback value)
     }
 }
