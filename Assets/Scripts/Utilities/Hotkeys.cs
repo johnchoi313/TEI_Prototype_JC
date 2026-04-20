@@ -3,10 +3,12 @@ using UnityEngine;
 /// <summary>
 /// Global hotkey manager.
 ///
-/// Shift+K  — Toggle visibility of all assigned Kinect UI and Camera objects.
-/// Shift+C  — Toggle both players between Keyboard and Kinect control schemes.
-///            Player 1: WASD  ↔  Kinect (body ID 0)
-///            Player 2: Arrow Keys  ↔  Kinect (body ID 1)
+/// Shift+K     — Toggle visibility of all assigned Kinect UI and Camera objects.
+/// Shift+C     — Toggle both players between Keyboard and Kinect control schemes.
+///               Player 1: WASD  ↔  Kinect (body ID 0)
+///               Player 2: Arrow Keys  ↔  Kinect (body ID 1)
+/// Shift+M     — Toggle visibility of the Microphone Debug UI panel.
+/// Shift+Space — Toggle visibility of the FPS display.
 ///
 /// Assign objects in the Inspector. All fields are optional.
 /// </summary>
@@ -15,6 +17,14 @@ public class Hotkeys : MonoBehaviour
     [Header("Shift+K — Kinect UI / Camera Toggle")]
     [Tooltip("GameObjects to show/hide when Shift+K is pressed")]
     public GameObject[] kinectObjects;
+
+    [Header("Shift+M — Mic Debug UI Toggle")]
+    [Tooltip("The Microphone Debug UI panel to show/hide when Shift+M is pressed.")]
+    public GameObject micDebugUI;
+
+    [Header("Shift+Space — FPS Display Toggle")]
+    [Tooltip("The FPS display GameObject to show/hide when Shift+Space is pressed.")]
+    public GameObject fpsDisplay;
 
     [Header("Shift+C — Control Scheme Toggle")]
     [Tooltip("Player 1 light controller (WASD ↔ Kinect body 0)")]
@@ -28,8 +38,10 @@ public class Hotkeys : MonoBehaviour
 
     // ── Runtime ───────────────────────────────────────────────────────────────
 
-    private bool _kinectVisible = true;
-    private bool _usingKinect   = false;
+    private bool _kinectVisible  = true;
+    private bool _micUIVisible   = true;
+    private bool _fpsVisible     = true;
+    private bool _usingKinect    = false;
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -48,11 +60,37 @@ public class Hotkeys : MonoBehaviour
         if (shift && Input.GetKeyDown(KeyCode.K))
             ToggleKinectObjects();
 
+        if (shift && Input.GetKeyDown(KeyCode.M))
+            ToggleMicDebugUI();
+
+        if (shift && Input.GetKeyDown(KeyCode.Space))
+            ToggleFPSDisplay();
+
         if (shift && Input.GetKeyDown(KeyCode.C))
             ToggleControlScheme();
     }
 
     // ── Hotkey actions ────────────────────────────────────────────────────────
+
+    private void ToggleMicDebugUI()
+    {
+        _micUIVisible = !_micUIVisible;
+
+        if (micDebugUI != null)
+            micDebugUI.SetActive(_micUIVisible);
+
+        Debug.Log($"[Hotkeys] Mic Debug UI {(_micUIVisible ? "shown" : "hidden")} (Shift+M).");
+    }
+
+    private void ToggleFPSDisplay()
+    {
+        _fpsVisible = !_fpsVisible;
+
+        if (fpsDisplay != null)
+            fpsDisplay.SetActive(_fpsVisible);
+
+        Debug.Log($"[Hotkeys] FPS display {(_fpsVisible ? "shown" : "hidden")} (Shift+Space).");
+    }
 
     private void ToggleKinectObjects()
     {

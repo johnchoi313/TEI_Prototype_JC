@@ -3,6 +3,12 @@ using UnityEngine;
 /// <summary>
 /// Physics-based fish controller for the maze.
 ///
+/// Mic-volume speed override
+///   Assign a MicVolumeToFishSpeed component to Mic Volume Driver.
+///   When set, the fish's follow speed is driven by that component's
+///   CurrentSpeed each FixedUpdate instead of the serialized _followSpeed
+///   field. Multiple fish controllers can share one MicVolumeToFishSpeed.
+///
 /// Automatically follows _target if it is:
 ///   - Within _followRadius world units, AND
 ///   - Has unobstructed line-of-sight (no wall colliders between fish and target).
@@ -16,10 +22,16 @@ using UnityEngine;
 ///   2. Attach PlayerFishController.
 ///   3. Assign _target (typically the paired PlayerLightController's Transform).
 ///   4. Set _wallLayerMask to the layer your maze wall cubes are on.
+///   5. Optionally assign a shared MicVolumeToFishSpeed to Mic Volume Driver.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerFishController : MonoBehaviour
 {
+    [Header("Mic Volume Driver")]
+    [Tooltip("Optional. When assigned, follow speed is read from this component each frame " +
+             "instead of the Follow Speed field below. Lets multiple fish share one mic source.")]
+    [SerializeField] private MicVolumeToFishSpeed _micVolumeDriver;
+
     [Header("Target")]
     [Tooltip("The transform this fish follows (e.g. a PlayerLightController GameObject).")]
     [SerializeField] private Transform _target;
@@ -81,6 +93,15 @@ public class PlayerFishController : MonoBehaviour
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Gets or sets the fish's follow speed at runtime (e.g. driven by mic volume).
+    /// </summary>
+    public float FollowSpeed
+    {
+        get => _followSpeed;
+        set => _followSpeed = Mathf.Max(0f, value);
+    }
+
+    /// <summary>
     /// Physics-safe teleport: moves the Rigidbody and clears all velocity so
     /// the fish doesn't drift away from its new position on the next physics tick.
     /// Preserves the fish's original Z so it stays on the XY plane.
@@ -118,7 +139,8 @@ public class PlayerFishController : MonoBehaviour
         toTarget.z = 0f;
 
         float dist = toTarget.magnitude;
-        float speed = Mathf.Min(_followSpeed, dist / Time.fixedDeltaTime);
+        float activeSpeed = _micVolumeDriver != null ? _micVolumeDriver.CurrentSpeed : _followSpeed;
+        float speed = Mathf.Min(activeSpeed, dist / Time.fixedDeltaTime);
         _rb.linearVelocity = toTarget.normalized * speed;
     }
 
@@ -151,7 +173,8 @@ public class PlayerFishController : MonoBehaviour
 
         // Wiggle: only while actively moving toward target.
         float speed = _rb.linearVelocity.magnitude;
-        float speedFactor = Mathf.Clamp01(speed / Mathf.Max(_followSpeed, 0.001f));
+        float activeSpeed = _micVolumeDriver != null ? _micVolumeDriver.CurrentSpeed : _followSpeed;
+        float speedFactor = Mathf.Clamp01(speed / Mathf.Max(activeSpeed, 0.001f));
 
         if (speedFactor > 0.01f)
             _wiggleTime += Time.deltaTime * _wiggleFrequency * Mathf.PI * 2f;
