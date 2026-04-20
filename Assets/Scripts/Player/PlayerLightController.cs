@@ -183,20 +183,44 @@ public class PlayerLightController : MonoBehaviour
 
     // ── FOV zoom ──────────────────────────────────────────────────────────────
 
-    private void UpdateZoom()
+    /// <summary>
+    /// Raw zoom input direction this frame (-1, 0, or 1).
+    /// Read by SharedFOVBudget each frame to compute how the budget should shift.
+    /// </summary>
+    public float ZoomInputDirection => ReadZoomInput();
+
+    /// <summary>Zoom speed in units/second. Read by SharedFOVBudget.</summary>
+    public float ZoomSpeed => _zoomSpeed;
+
+    /// <summary>
+    /// Current zoom value. Read by SharedFOVBudget.
+    /// </summary>
+    public float CurrentZoom => _currentZoom;
+
+    /// <summary>
+    /// Apply a zoom value directly (called by SharedFOVBudget).
+    /// Clamps to [_zoomMin, _zoomMax] and pushes to camera and FOV object.
+    /// </summary>
+    public void ApplyZoom(float zoom)
     {
-        float direction = ReadZoomInput();
-        if (Mathf.Approximately(direction, 0f)) return;
-
-        float delta = direction * _zoomSpeed * Time.deltaTime;
-
-        _currentZoom = Mathf.Clamp(_currentZoom + delta, _zoomMin, _zoomMax);
+        _currentZoom = Mathf.Clamp(zoom, _zoomMin, _zoomMax);
 
         if (_fovCamera != null)
             _fovCamera.orthographicSize = _currentZoom;
 
         if (_fovObject != null)
             _fovObject.localScale = new Vector3(_currentZoom, _currentZoom, _fovObject.localScale.z);
+    }
+
+    private void UpdateZoom()
+    {
+        // When no SharedFOVBudget is present, fall back to self-managed zoom.
+        if (SharedFOVBudget.Instance != null) return;
+
+        float direction = ReadZoomInput();
+        if (Mathf.Approximately(direction, 0f)) return;
+
+        ApplyZoom(_currentZoom + direction * _zoomSpeed * Time.deltaTime);
     }
 
     private float ReadZoomInput()

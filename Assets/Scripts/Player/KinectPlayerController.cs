@@ -52,6 +52,7 @@ public class KinectPlayerController : MonoBehaviour
     [Tooltip("How long (seconds) the jump signal stays true after detection")]
     public float jumpHoldTime      = 0.25f;
 
+
     [Header("Debug")]
     [Tooltip("Optional TextMeshPro component to display live output values")]
     public TMP_Text debugText;
@@ -65,6 +66,27 @@ public class KinectPlayerController : MonoBehaviour
     /// <summary>True for jumpHoldTime seconds after a jump is detected.</summary>
     public bool    JumpPressed { get; private set; }
 
+    /// <summary>
+    /// True when the player's character is visible (active in hierarchy).
+    /// The Brekel system hides the character GameObject when no signal is received.
+    /// </summary>
+    public bool IsTracked => pelvis != null ? pelvis.gameObject.activeInHierarchy : true;
+
+    /// <summary>
+    /// World-space Z of this player's pelvis (falls back to the character root,
+    /// then this GameObject). Used by SharedFOVBudget to compute depth differential.
+    /// Always valid — even when the player is hidden the skeleton keeps its last pose.
+    /// </summary>
+    public float WorldZ
+    {
+        get
+        {
+            if (pelvis    != null) return pelvis.position.z;
+            if (character != null) return character.transform.position.z;
+            return transform.position.z;
+        }
+    }
+
     // -------------------------------------------------------------------------
     //  Internal
     // -------------------------------------------------------------------------
@@ -76,6 +98,7 @@ public class KinectPlayerController : MonoBehaviour
 
     private bool  _jumpArmed;
     private float _jumpTimer;
+
 
 
     // =========================================================================
@@ -231,6 +254,7 @@ public class KinectPlayerController : MonoBehaviour
         if (debugText == null) return;
 
         float pelvisY   = pelvis  != null ? pelvis.position.y  : 0f;
+        float pelvisZ   = pelvis  != null ? pelvis.position.z  : 0f;
         float aboveBase = pelvisY - _pelvisBaseline;
 
         Vector3 chestPos = chest != null ? chest.position : Vector3.zero;
@@ -250,6 +274,9 @@ public class KinectPlayerController : MonoBehaviour
             $"Baseline    : {_pelvisBaseline:F3}\n" +
             $"Above Base  : {aboveBase,+6:F3}\n" +
             $"Armed       : {_jumpArmed}\n" +
-            $"Jump        : {(JumpPressed ? "YES" : "no")}";
+            $"Jump        : {(JumpPressed ? "YES" : "no")}\n" +
+            $"\n── Depth ──\n" +
+            $"Pelvis Z    : {pelvisZ,+6:F3}\n" +
+            $"Tracked     : {(IsTracked ? "YES" : "no")}";
     }
 }

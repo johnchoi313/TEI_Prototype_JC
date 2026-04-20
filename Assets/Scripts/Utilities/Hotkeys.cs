@@ -23,6 +23,9 @@ public class Hotkeys : MonoBehaviour
     [Tooltip("Player 2 light controller (Arrow Keys ↔ Kinect body 1)")]
     public PlayerLightController player2Controller;
 
+    [Tooltip("Shared FOV budget — switches between keyboard and Kinect depth mode alongside the control scheme.")]
+    public SharedFOVBudget sharedFOVBudget;
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private bool _kinectVisible = true;
@@ -68,6 +71,9 @@ public class Hotkeys : MonoBehaviour
 
         SetPlayer(player1Controller, PlayerLightController.ControlScheme.Player1_WASD);
         SetPlayer(player2Controller, PlayerLightController.ControlScheme.Player2_ArrowKeys);
+
+        if (sharedFOVBudget != null)
+            sharedFOVBudget.UseKinectDepth = _usingKinect;
 
         Debug.Log($"[Hotkeys] Control scheme → {(_usingKinect ? "Kinect" : "Keyboard")} (Shift+C).");
     }
