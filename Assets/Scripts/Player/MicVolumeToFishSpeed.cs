@@ -88,6 +88,9 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     /// <summary>The smoothed fish speed currently being applied.</summary>
     public float CurrentSpeed => _smoothedSpeed;
 
+    /// <summary>Raw RMS volume from the spectrum this frame (0–1).</summary>
+    public float CurrentRMS => _debugCurrentVolume;
+
     /// <summary>The configured minimum fish speed (maps to silence).</summary>
     public float MinSpeed => _minSpeed;
 
