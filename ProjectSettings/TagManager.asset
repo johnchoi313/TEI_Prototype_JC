@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 3
   tags:
   - Global Resource
+  - Breakable Wall
+  - Real Station
   layers:
   - Default
   - TransparentFX

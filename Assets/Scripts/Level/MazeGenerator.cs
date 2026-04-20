@@ -594,6 +594,7 @@ public class MazeGenerator : MonoBehaviour
             sphere.transform.localScale = Vector3.one * (sphereRadius * 2f);
             if (_stationMaterial != null)
                 sphere.GetComponent<Renderer>().sharedMaterial = _stationMaterial;
+            sphere.AddComponent<Station>();
         }
 
         Debug.Log($"[MazeGenerator] Placed {stationCount} station(s) from {candidates.Count} candidate cells.");

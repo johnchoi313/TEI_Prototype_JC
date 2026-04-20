@@ -12,6 +12,7 @@ using UnityEngine;
 /// Shift+L     — Toggle visibility of the Logger UI panel.
 /// Shift+A     — Show all / hide all UI panels (Mic, FPS, Logger, Kinect).
 /// Shift+Space — Start / stop logging (calls Logger.StartLogging / StopLogging).
+/// Tab         — Swap fish abilities between players (BreakWall ↔ CollectStation).
 ///
 /// All visibility states are saved to PlayerPrefs and restored on next run.
 /// Assign objects in the Inspector. All fields are optional.
@@ -55,8 +56,27 @@ public class Hotkeys : MonoBehaviour
     [Tooltip("Player 2 light controller (Arrow Keys ↔ Kinect body 1)")]
     public PlayerLightController player2Controller;
 
+    [Tooltip("Player 1 fish ability (E key ↔ Kinect jump)")]
+    public FishAbility player1Ability;
+
+    [Tooltip("Player 2 fish ability (Return key ↔ Kinect jump)")]
+    public FishAbility player2Ability;
+
     [Tooltip("Shared FOV budget — switches between keyboard and Kinect depth mode alongside the control scheme.")]
     public SharedFOVBudget sharedFOVBudget;
+
+    [Header("Tab — Ability Swap")]
+    [Tooltip("Renderer on Player 1's fish (or any indicator object) whose material is swapped on Tab.")]
+    public Renderer player1AbilityRenderer;
+
+    [Tooltip("Renderer on Player 2's fish (or any indicator object) whose material is swapped on Tab.")]
+    public Renderer player2AbilityRenderer;
+
+    [Tooltip("Material representing the Break Wall ability.")]
+    public Material breakWallMaterial;
+
+    [Tooltip("Material representing the Collect Station ability.")]
+    public Material collectStationMaterial;
 
     // ── Runtime state ─────────────────────────────────────────────────────────
 
@@ -83,6 +103,10 @@ public class Hotkeys : MonoBehaviour
         _usingKinect = PlayerPrefs.GetInt(PrefUsingKinect, defaultKinect ? 1 : 0) == 1;
         SetPlayer(player1Controller, PlayerLightController.ControlScheme.Player1_WASD);
         SetPlayer(player2Controller, PlayerLightController.ControlScheme.Player2_ArrowKeys);
+        SetAbility(player1Ability,   PlayerLightController.ControlScheme.Player1_WASD);
+        SetAbility(player2Ability,   PlayerLightController.ControlScheme.Player2_ArrowKeys);
+        if (player1Ability != null) ApplyAbilityMaterial(player1AbilityRenderer, player1Ability.CurrentAbilityType);
+        if (player2Ability != null) ApplyAbilityMaterial(player2AbilityRenderer, player2Ability.CurrentAbilityType);
         if (sharedFOVBudget != null)
             sharedFOVBudget.UseKinectDepth = _usingKinect;
     }
@@ -111,6 +135,9 @@ public class Hotkeys : MonoBehaviour
 
         if (shift && Input.GetKeyDown(KeyCode.A))
             ToggleShowAll();
+
+        if (Input.GetKeyDown(KeyCode.Tab))
+            SwapAbilities();
     }
 
     // ── Hotkey actions ────────────────────────────────────────────────────────
@@ -202,12 +229,42 @@ public class Hotkeys : MonoBehaviour
         Debug.Log($"[Hotkeys] Kinect UI {(_kinectVisible ? "shown" : "hidden")} (Shift+K).");
     }
 
+    private void SwapAbilities()
+    {
+        if (player1Ability == null || player2Ability == null)
+        {
+            Debug.LogWarning("[Hotkeys] Cannot swap abilities — assign both player ability components (Tab).");
+            return;
+        }
+
+        FishAbility.AbilityType p1 = player1Ability.CurrentAbilityType;
+        player1Ability.CurrentAbilityType = player2Ability.CurrentAbilityType;
+        player2Ability.CurrentAbilityType = p1;
+
+        ApplyAbilityMaterial(player1AbilityRenderer, player1Ability.CurrentAbilityType);
+        ApplyAbilityMaterial(player2AbilityRenderer, player2Ability.CurrentAbilityType);
+
+        Debug.Log($"[Hotkeys] Abilities swapped — P1: {player1Ability.CurrentAbilityType}, P2: {player2Ability.CurrentAbilityType} (Tab).");
+    }
+
+    private void ApplyAbilityMaterial(Renderer rend, FishAbility.AbilityType abilityType)
+    {
+        if (rend == null) return;
+        Material mat = abilityType == FishAbility.AbilityType.BreakWall
+            ? breakWallMaterial
+            : collectStationMaterial;
+        if (mat != null)
+            rend.sharedMaterial = mat;
+    }
+
     private void ToggleControlScheme()
     {
         _usingKinect = !_usingKinect;
 
         SetPlayer(player1Controller, PlayerLightController.ControlScheme.Player1_WASD);
         SetPlayer(player2Controller, PlayerLightController.ControlScheme.Player2_ArrowKeys);
+        SetAbility(player1Ability,   PlayerLightController.ControlScheme.Player1_WASD);
+        SetAbility(player2Ability,   PlayerLightController.ControlScheme.Player2_ArrowKeys);
 
         if (sharedFOVBudget != null)
             sharedFOVBudget.UseKinectDepth = _usingKinect;
@@ -230,6 +287,15 @@ public class Hotkeys : MonoBehaviour
     {
         if (lc == null) return;
         lc.ActiveControlScheme = _usingKinect
+            ? PlayerLightController.ControlScheme.Kinect
+            : keyboardScheme;
+    }
+
+    private void SetAbility(FishAbility ability,
+                            PlayerLightController.ControlScheme keyboardScheme)
+    {
+        if (ability == null) return;
+        ability.ControlScheme = _usingKinect
             ? PlayerLightController.ControlScheme.Kinect
             : keyboardScheme;
     }
