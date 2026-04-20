@@ -61,6 +61,16 @@ public class PlayerLightController : MonoBehaviour
     [Tooltip("Radius of the visible light — read by PlayerFishController to determine follow range.")]
     [SerializeField] private float _lightRadius = 5f;
 
+    [Header("FOV Object")]
+    [Tooltip("Transform offset from its initial world position by (RawInput * _fovOffset).")]
+    [SerializeField] private Transform _fovObject;
+
+    [Tooltip("World-unit multiplier applied to the raw input axis before offsetting the FOV object.")]
+    [SerializeField] private Vector2 _fovOffset = new Vector2(2f, 2f);
+
+    [Tooltip("Lerp speed for smoothing FOV object movement. Higher = snappier, lower = more lag.")]
+    [SerializeField, Range(1f, 50f)] private float _fovSmoothing = 10f;
+
     // ── Public ────────────────────────────────────────────────────────────────
 
     /// <summary>Current XY velocity of the light this frame.</summary>
@@ -69,23 +79,35 @@ public class PlayerLightController : MonoBehaviour
     /// <summary>How far the light illuminates — read by PlayerFishController.</summary>
     public float LightRadius => _lightRadius;
 
+    /// <summary>
+    /// Raw normalised input axis this frame (-1 to 1 on each axis).
+    /// Read by PlayerCameraCircle to position the circular HUD viewport.
+    /// </summary>
+    public Vector2 RawInput { get; private set; }
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private Vector3 _velocity = Vector3.zero;
     private float   _originZ;
 
+    // Initial world position of the FOV object, captured once in Awake.
+    private Vector3 _fovOrigin;
+
     // ── Unity ─────────────────────────────────────────────────────────────────
 
     private void Awake()
     {
-        // Capture the Z the designer placed this object at — never touched again.
         _originZ = transform.position.z;
+
+        if (_fovObject != null)
+            _fovOrigin = _fovObject.position;
     }
 
     private void Update()
     {
         MoveLight();
         ClampToBounds();
+        MoveFOVObjects();
     }
 
     // ── Movement ──────────────────────────────────────────────────────────────
@@ -96,6 +118,8 @@ public class PlayerLightController : MonoBehaviour
 
         if (input.sqrMagnitude > 1f)
             input.Normalize();
+
+        RawInput = input;
 
         // Only XY — velocity Z stays zero so the object never drifts on Z.
         Vector3 desiredVelocity = new Vector3(input.x, input.y, 0f) * _maxSpeed;
@@ -110,6 +134,23 @@ public class PlayerLightController : MonoBehaviour
         p.y += _velocity.y * Time.deltaTime;
         p.z  = _originZ;
         transform.position = p;
+    }
+
+    // ── FOV object positioning ────────────────────────────────────────────────
+
+    private void MoveFOVObjects()
+    {
+        if (_fovObject == null) return;
+
+        Vector3 target = _fovOrigin + new Vector3(
+            RawInput.x * _fovOffset.x,
+            RawInput.y * _fovOffset.y,
+            0f);
+
+        _fovObject.position = Vector3.Lerp(
+            _fovObject.position,
+            target,
+            _fovSmoothing * Time.deltaTime);
     }
 
     // ── Boundary clamping ─────────────────────────────────────────────────────
