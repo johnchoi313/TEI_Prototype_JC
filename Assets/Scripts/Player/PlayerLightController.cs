@@ -69,7 +69,23 @@ public class PlayerLightController : MonoBehaviour
     [SerializeField] private Vector2 _fovOffset = new Vector2(2f, 2f);
 
     [Tooltip("Lerp speed for smoothing FOV object movement. Higher = snappier, lower = more lag.")]
-    [SerializeField, Range(1f, 50f)] private float _fovSmoothing = 10f;
+    [SerializeField, Range(0f, 50f)] private float _fovSmoothing = 10f;
+
+    [Header("FOV Zoom")]
+    [Tooltip("Camera whose orthographic size is adjusted by the zoom keys.")]
+    [SerializeField] private Camera _fovCamera;
+
+    [Tooltip("How fast orthographic size and FOV object scale change per second while the key is held.")]
+    [SerializeField] private float _zoomSpeed = 1f;
+
+    [Tooltip("Default (starting) value for both orthographic size and FOV object uniform scale.")]
+    [SerializeField] private float _zoomDefault = 3f;
+
+    [Tooltip("Minimum value for both orthographic size and FOV object uniform scale.")]
+    [SerializeField] private float _zoomMin = 1f;
+
+    [Tooltip("Maximum value for both orthographic size and FOV object uniform scale.")]
+    [SerializeField] private float _zoomMax = 8f;
 
     // ── Public ────────────────────────────────────────────────────────────────
 
@@ -93,14 +109,25 @@ public class PlayerLightController : MonoBehaviour
     // Initial world position of the FOV object, captured once in Awake.
     private Vector3 _fovOrigin;
 
+    // Current zoom value shared by both ortho size and FOV object scale.
+    private float _currentZoom;
+
     // ── Unity ─────────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         _originZ = transform.position.z;
 
+        _currentZoom = _zoomDefault;
+
         if (_fovObject != null)
+        {
             _fovOrigin = _fovObject.position;
+            _fovObject.localScale = new Vector3(_currentZoom, _currentZoom, _fovObject.localScale.z);
+        }
+
+        if (_fovCamera != null)
+            _fovCamera.orthographicSize = _currentZoom;
     }
 
     private void Update()
@@ -108,6 +135,7 @@ public class PlayerLightController : MonoBehaviour
         MoveLight();
         ClampToBounds();
         MoveFOVObjects();
+        UpdateZoom();
     }
 
     // ── Movement ──────────────────────────────────────────────────────────────
@@ -151,6 +179,39 @@ public class PlayerLightController : MonoBehaviour
             _fovObject.position,
             target,
             _fovSmoothing * Time.deltaTime);
+    }
+
+    // ── FOV zoom ──────────────────────────────────────────────────────────────
+
+    private void UpdateZoom()
+    {
+        float direction = ReadZoomInput();
+        if (Mathf.Approximately(direction, 0f)) return;
+
+        float delta = direction * _zoomSpeed * Time.deltaTime;
+
+        _currentZoom = Mathf.Clamp(_currentZoom + delta, _zoomMin, _zoomMax);
+
+        if (_fovCamera != null)
+            _fovCamera.orthographicSize = _currentZoom;
+
+        if (_fovObject != null)
+            _fovObject.localScale = new Vector3(_currentZoom, _currentZoom, _fovObject.localScale.z);
+    }
+
+    private float ReadZoomInput()
+    {
+        if (_controlScheme == ControlScheme.Player1_WASD)
+        {
+            if (Input.GetKey(KeyCode.R)) return  1f;
+            if (Input.GetKey(KeyCode.F)) return -1f;
+        }
+        else if (_controlScheme == ControlScheme.Player2_ArrowKeys)
+        {
+            if (Input.GetKey(KeyCode.RightShift)) return  1f;
+            if (Input.GetKey(KeyCode.RightControl)) return -1f;
+        }
+        return 0f;
     }
 
     // ── Boundary clamping ─────────────────────────────────────────────────────

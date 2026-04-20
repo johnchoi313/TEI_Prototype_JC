@@ -570,7 +570,6 @@ GameObject:
   - component: {fileID: 66549418}
   - component: {fileID: 66549417}
   - component: {fileID: 66549416}
-  - component: {fileID: 66549419}
   m_Layer: 6
   m_Name: PlayerFOV 2
   m_TagString: Untagged
@@ -646,24 +645,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &66549419
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 66549415}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5fea29bb7c508c244a1f805a5fd3fc4d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  outlineMode: 0
-  outlineColor: {r: 1, g: 1, b: 0.2509804, a: 1}
-  outlineWidth: 6
-  precomputeOutline: 0
-  bakeKeys: []
-  bakeValues: []
 --- !u!1 &72970806
 GameObject:
   m_ObjectHideFlags: 0
@@ -9596,6 +9577,16 @@ Transform:
   m_Children: []
   m_Father: {fileID: 972939813}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!20 &1374721976 stripped
+Camera:
+  m_CorrespondingSourceObject: {fileID: 2053795526110373675, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+  m_PrefabInstance: {fileID: 1223640582705210818}
+  m_PrefabAsset: {fileID: 0}
+--- !u!20 &1387599623 stripped
+Camera:
+  m_CorrespondingSourceObject: {fileID: 2053795526110373675, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+  m_PrefabInstance: {fileID: 1451598513}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1396266545
 GameObject:
   m_ObjectHideFlags: 0
@@ -10527,16 +10518,48 @@ PrefabInstance:
       value: Player Camera 2
       objectReference: {fileID: 0}
     - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _zoomMin
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: _maxSpeed
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovCamera
+      value: 
+      objectReference: {fileID: 1387599623}
     - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: _fovObject
       value: 
       objectReference: {fileID: 66549418}
     - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _zoomSpeed
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovOffset.x
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovOffset.y
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovScaleMax
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovScaleMin
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _zoomDefault
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: _fovSmoothing
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: _controlScheme
@@ -14776,12 +14799,44 @@ PrefabInstance:
       value: Player Camera 1
       objectReference: {fileID: 0}
     - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _zoomMin
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovCamera
+      value: 
+      objectReference: {fileID: 1374721976}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: _fovObject
       value: 
       objectReference: {fileID: 1151388028144072705}
     - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _zoomSpeed
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovOffset.x
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovOffset.y
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovScaleMax
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _fovScaleMin
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
+      propertyPath: _zoomDefault
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: _fovSmoothing
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 7760214338466405647, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
       propertyPath: _kinectController
@@ -16028,7 +16083,6 @@ GameObject:
   - component: {fileID: 1151388028144072705}
   - component: {fileID: 2823090747862417739}
   - component: {fileID: 1587545475931383263}
-  - component: {fileID: 8164078559442512699}
   m_Layer: 6
   m_Name: PlayerFOV 1
   m_TagString: Untagged
@@ -16036,24 +16090,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &8164078559442512699
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8164078559442512698}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5fea29bb7c508c244a1f805a5fd3fc4d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  outlineMode: 0
-  outlineColor: {r: 1, g: 1, b: 0.2509804, a: 1}
-  outlineWidth: 6
-  precomputeOutline: 0
-  bakeKeys: []
-  bakeValues: []
 --- !u!1 &8263142456159988501
 GameObject:
   m_ObjectHideFlags: 0
