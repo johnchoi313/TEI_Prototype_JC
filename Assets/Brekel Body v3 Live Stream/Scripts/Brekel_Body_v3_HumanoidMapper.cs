@@ -44,10 +44,6 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
              "Must be tracking the same body ID.")]
     public Brekel_Body_v3_DefaultMapper defaultMapper;
 
-    [Header("Mapping Settings")]
-    [Tooltip("Which body ID from the stream drives this character")]
-    public int bodyID = 0;
-
     [Header("Face (optional)")]
     [Tooltip("Face SkinnedMeshRenderer with blendshapes — assign manually")]
     public SkinnedMeshRenderer faceMesh;
@@ -96,9 +92,7 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
         if (receiver == null || !receiver.IsConnected)
             return;
 
-        bodyID = Mathf.Clamp(bodyID, 0, Brekel_Body_v3_Receiver.MaxBodies - 1);
-
-        BrekelBodyFrame body = receiver.GetBody(bodyID);
+        BrekelBodyFrame body = receiver.GetBody(defaultMapper.body_ID);
         if (body == null) return;
 
         Retarget(_hips,       Brekel_joint_name_v3.waist,      body);

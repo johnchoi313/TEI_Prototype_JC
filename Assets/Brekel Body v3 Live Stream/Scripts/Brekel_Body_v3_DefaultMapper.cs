@@ -47,6 +47,10 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     [Tooltip("GameObject carrying the face SkinnedMeshRenderer with blendshapes")]
     public GameObject face_mesh;
 
+    [Header("Visuals (optional)")]
+    [Tooltip("If set, applies this Material to the Renderer on every assigned joint Transform")]
+    public Material jointMaterial;
+
     // -------------------------------------------------------------------------
     //  Name candidates for each joint.
     //  Searched in order — first match in the hierarchy wins.
@@ -106,6 +110,8 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
             _faceSMR = face_mesh.GetComponent<SkinnedMeshRenderer>();
 
         StoreOffsets();
+
+        ApplyJointMaterial();
     }
 
     void Update()
@@ -234,6 +240,36 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
 
 
     // =========================================================================
+    //  Joint material
+    // =========================================================================
+    [ContextMenu("Apply Joint Material")]
+    public void ApplyJointMaterial()
+    {
+        if (jointMaterial == null)
+        {
+            Debug.LogWarning("[DefaultMapper] Apply Joint Material: no Material assigned.");
+            return;
+        }
+
+        Transform[] joints =
+        {
+            hips, spine, chest, neck, head,
+            upperLeg_L, lowerLeg_L, foot_L,
+            upperLeg_R, lowerLeg_R, foot_R,
+            collar_L, upperArm_L, foreArm_L, hand_L,
+            collar_R, upperArm_R, foreArm_R, hand_R,
+        };
+
+        foreach (Transform t in joints)
+        {
+            if (t == null) continue;
+            Renderer r = t.GetComponent<Renderer>();
+            if (r != null) r.material = jointMaterial;
+        }
+    }
+
+
+    // =========================================================================
     //  Rest-pose offset baking
     // =========================================================================
     private void StoreOffsets()
@@ -258,53 +294,11 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
         BakeOffset(foreArm_R,  Brekel_joint_name_v3.foreArm_R);
         BakeOffset(hand_R,     Brekel_joint_name_v3.hand_R);
 
-        LogInitialOffsets();
     }
 
     private void BakeOffset(Transform t, Brekel_joint_name_v3 joint)
     {
         if (t != null)
             _offsets[(int)joint] = Quaternion.Inverse(t.localRotation);
-    }
-
-    // =========================================================================
-    //  Initial offset debug log  (called once from StoreOffsets)
-    // =========================================================================
-    private void LogInitialOffsets()
-    {
-        int numJoints = (int)Brekel_joint_name_v3.numJoints;
-        Transform[] transforms = new Transform[]
-        {
-            hips, spine, chest, neck, head, null,         // 0-5  (head_tip = null)
-            upperLeg_L, lowerLeg_L, foot_L, null,         // 6-9  (toes_L = null)
-            upperLeg_R, lowerLeg_R, foot_R, null,         // 10-13 (toes_R = null)
-            collar_L, upperArm_L, foreArm_L, hand_L, null,// 14-18 (fingersTip_L = null)
-            collar_R, upperArm_R, foreArm_R, hand_R, null,// 19-23 (fingersTip_R = null)
-            null                                           // 24 numJoints sentinel
-        };
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("╔══════════════════════════════════════════════════════════════════════════════════╗");
-        sb.AppendLine("║  DEFAULT MAPPER — Initial bind-pose localRotations & baked offsets              ║");
-        sb.AppendLine("╠══════╦══════════════════╦════════════════════════╦════════════════════════╦═══════════╣");
-        sb.AppendLine("║  Idx ║  Joint           ║  localRot (Euler)      ║  offset (Euler)        ║  BoneName ║");
-        sb.AppendLine("╠══════╬══════════════════╬════════════════════════╬════════════════════════╬═══════════╣");
-
-        for (int i = 0; i < numJoints; i++)
-        {
-            Transform t   = (i < transforms.Length) ? transforms[i] : null;
-            string name   = BrekelJointNames.Names[i];
-            string boneName = t != null ? t.name : "(unassigned)";
-            Vector3 localEu = t != null ? t.localRotation.eulerAngles : Vector3.zero;
-            Vector3 offsetEu = _offsets[i].eulerAngles;
-
-            sb.AppendLine(
-                $"║ [{i:D2}] ║ {name,-16} ║ " +
-                $"({localEu.x,7:F2}, {localEu.y,7:F2}, {localEu.z,7:F2}) ║ " +
-                $"({offsetEu.x,7:F2}, {offsetEu.y,7:F2}, {offsetEu.z,7:F2}) ║ {boneName} ║"
-            );
-        }
-        sb.AppendLine("╚══════════════════════════════════════════════════════════════════════════════════╝");
-        Debug.Log(sb.ToString());
     }
 }

@@ -163,14 +163,6 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
     [Tooltip("TCP port Brekel Body v3 is streaming on (default 8844)")]
     public int    port = 8844;
 
-    [Header("Debug")]
-    [Tooltip("Print every joint name, position, and rotation to the Console each frame")]
-    public bool debugLogJoints = false;
-    [Tooltip("Which body ID to print when debug logging (usually 0)")]
-    public int  debugBodyID    = 0;
-    [Tooltip("How many frames to skip between debug prints (0 = every frame, 30 = ~once/sec)")]
-    public int  debugFrameSkip = 30;
-
     // -------------------------------------------------------------------------
     //  Public read-only state
     // -------------------------------------------------------------------------
@@ -192,7 +184,6 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
     private readonly object   _swapLock    = new object();
     private bool              _newDataReady;
 
-    private int _debugFrameCounter;
 
 
     // =========================================================================
@@ -226,8 +217,6 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
             }
         }
 
-        if (debugLogJoints)
-            DebugLogFrame();
     }
 
 
@@ -244,43 +233,6 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
         if (bodyID < 0 || bodyID >= MaxBodies)
             return null;
         return _front[bodyID];
-    }
-
-
-    // =========================================================================
-    //  Debug logging
-    // =========================================================================
-    private void DebugLogFrame()
-    {
-        _debugFrameCounter++;
-        if (_debugFrameCounter <= debugFrameSkip)
-            return;
-        _debugFrameCounter = 0;
-
-        int id = Mathf.Clamp(debugBodyID, 0, MaxBodies - 1);
-        BrekelBodyFrame body = _front[id];
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("╔══════════════════════════════════════════════════════════════╗");
-        sb.AppendLine($"║  BREKEL BODY v3  |  Body ID: {id}  |  t = {body.timestamp:F3}s");
-        sb.AppendLine("╠══════════╦══════════╦════════════════════════╦══════════════╣");
-        sb.AppendLine("║  Index   ║  Joint   ║  Position (x, y, z)    ║  Euler (x, y, z)     ║  Conf ║");
-        sb.AppendLine("╠══════════╬══════════╬════════════════════════╬══════════════╣");
-
-        for (int i = 0; i < BrekelBodyFrame.NumJoints; i++)
-        {
-            BrekelJoint j    = body.joints[i];
-            Vector3     eu   = j.rotation.eulerAngles;
-            string      name = BrekelJointNames.Names[i];
-            sb.AppendLine(
-                $"║  [{i:D2}]     ║  {name,-14}  ║  " +
-                $"({j.position.x,7:F3}, {j.position.y,7:F3}, {j.position.z,7:F3})  ║  " +
-                $"({eu.x,7:F1}, {eu.y,7:F1}, {eu.z,7:F1})  ║  {j.confidence:F2}  ║"
-            );
-        }
-
-        sb.AppendLine("╚══════════════════════════════════════════════════════════════╝");
-        Debug.Log(sb.ToString());
     }
 
 
