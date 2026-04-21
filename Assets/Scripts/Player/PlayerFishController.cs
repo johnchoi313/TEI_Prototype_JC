@@ -9,6 +9,12 @@ using UnityEngine;
 ///   CurrentSpeed each FixedUpdate instead of the serialized _followSpeed
 ///   field. Multiple fish controllers can share one MicVolumeToFishSpeed.
 ///
+/// Particle emission
+///   Assign a ParticleSystem to Speed Particles. Its emission rateOverTime is
+///   remapped every Update from [MinEmission, MaxEmission] based on current speed.
+///   Enable Use Driver Speed Range to automatically pull the speed bounds from the
+///   assigned MicVolumeToFishSpeed (MinSpeed / MaxSpeed); otherwise set them manually.
+///
 /// Automatically follows _target if it is:
 ///   - Within _followRadius world units, AND
 ///   - Has unobstructed line-of-sight (no wall colliders between fish and target).
@@ -24,6 +30,8 @@ using UnityEngine;
 ///   4. Set _wallLayerMask to the layer your maze wall cubes are on.
 ///   5. Optionally assign a shared MicVolumeToFishSpeed to Mic Volume Driver.
 /// </summary>
+public enum EmissionCurveMode { Linear, Exponential }
+
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerFishController : MonoBehaviour
 {
@@ -62,6 +70,37 @@ public class PlayerFishController : MonoBehaviour
     [Tooltip("Degrees per second the mesh rotates toward its target orientation.")]
     [SerializeField] private float _rotationSpeed = 180f;
 
+
+    [Header("Particle Effects")]
+    [Tooltip("ParticleSystem whose emission rateOverTime is driven by current fish speed.")]
+    [SerializeField] private ParticleSystem _speedParticles;
+
+    [Tooltip("Emission rate (particles/sec) when speed is at or below the minimum.")]
+    [SerializeField] private float _particleMinEmission = 0f;
+
+    [Tooltip("Emission rate (particles/sec) when speed is at or above the maximum.")]
+    [SerializeField] private float _particleMaxEmission = 50f;
+
+    [Tooltip("When enabled and a Mic Volume Driver is assigned, the emission speed range is " +
+             "read automatically from MicVolumeToFishSpeed.MinSpeed / MaxSpeed.")]
+    [SerializeField] private bool _useDriverSpeedRange = true;
+
+    [Tooltip("Speed (wu/s) that maps to minimum emission. Used when Use Driver Speed Range is off " +
+             "or no Mic Volume Driver is assigned.")]
+    [SerializeField] private float _particleMinSpeed = 0f;
+
+    [Tooltip("Speed (wu/s) that maps to maximum emission. Used when Use Driver Speed Range is off " +
+             "or no Mic Volume Driver is assigned.")]
+    [SerializeField] private float _particleMaxSpeed = 10f;
+
+    [Tooltip("Linear: emission scales evenly with speed.\n" +
+             "Exponential: emission stays low until speed is high, then rises sharply — " +
+             "few bubbles at rest, burst at full speed. Controlled by Exponent below.")]
+    [SerializeField] private EmissionCurveMode _emissionCurveMode = EmissionCurveMode.Exponential;
+
+    [Tooltip("Exponent for exponential mode. 1 = identical to linear. " +
+             "2 = quadratic (moderate curve). 3–4 = very bottom-heavy, large burst at high speed.")]
+    [SerializeField] private float _emissionExponent = 2f;
 
     [Header("Wiggle")]
     [Tooltip("Max wiggle angle added to Y (side-to-side tail wag) while moving.")]
@@ -120,6 +159,7 @@ public class PlayerFishController : MonoBehaviour
     {
         if (_meshTransform == null || _target == null) return;
         UpdateMeshRotation();
+        UpdateParticleEmission();
     }
 
     private void FixedUpdate()
@@ -184,6 +224,31 @@ public class PlayerFishController : MonoBehaviour
         float wiggleZ = Mathf.Sin(_wiggleTime + Mathf.PI * 0.5f) * _wiggleAmplitudeZ * speedFactor;
 
         _meshTransform.localRotation = Quaternion.Euler(0f, _meshRotY + wiggleY, _meshRotZ + wiggleZ);
+    }
+
+    // ── Particle emission ─────────────────────────────────────────────────────
+
+    private void UpdateParticleEmission()
+    {
+        if (_speedParticles == null) return;
+
+        float minSpeed = _particleMinSpeed;
+        float maxSpeed = _particleMaxSpeed;
+        if (_useDriverSpeedRange && _micVolumeDriver != null)
+        {
+            minSpeed = _micVolumeDriver.MinSpeed;
+            maxSpeed = _micVolumeDriver.MaxSpeed;
+        }
+
+        float t = Mathf.InverseLerp(minSpeed, Mathf.Max(maxSpeed, minSpeed + 0.001f), _rb.linearVelocity.magnitude);
+
+        if (_emissionCurveMode == EmissionCurveMode.Exponential)
+            t = Mathf.Pow(t, Mathf.Max(_emissionExponent, 0.001f));
+
+        float emission = Mathf.Lerp(_particleMinEmission, _particleMaxEmission, t);
+
+        var em = _speedParticles.emission;
+        em.rateOverTime = emission;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
