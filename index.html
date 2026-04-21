@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEI Prototype — Documentation</title>
+  <style>
+    :root {
+      --bg:      #0f1117;
+      --surface: #181c27;
+      --card:    #1e2333;
+      --border:  #2a3050;
+      --accent:  #4f8ef7;
+      --accent2: #7c5cf7;
+      --green:   #3ecf8e;
+      --text:    #d8dff0;
+      --muted:   #7a85a3;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .page {
+      max-width: 680px;
+      width: 100%;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      font-size: 1.6rem;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 8px;
+      font-size: 0.95rem;
+    }
+
+    /* ── Doc cards ── */
+    .doc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+
+    .doc-card {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+
+    .doc-card:hover {
+      border-color: var(--accent);
+      background: #1e2a42;
+      transform: translateY(-1px);
+    }
+
+    .doc-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .icon-controls { background: #1a2a4a; }
+    .icon-mic      { background: #1a3a2a; }
+
+    .doc-body { flex: 1; }
+
+    .doc-body h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .doc-body p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .doc-arrow {
+      color: var(--muted);
+      font-size: 1.1rem;
+      transition: color 0.15s, transform 0.15s;
+    }
+
+    .doc-card:hover .doc-arrow {
+      color: var(--accent);
+      transform: translateX(3px);
+    }
+
+    /* ── Tags ── */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      border-radius: 4px;
+      padding: 2px 7px;
+      border: 1px solid;
+    }
+
+    .tag-blue   { color: var(--accent);  border-color: #2a4060; background: #1a2a4a; }
+    .tag-green  { color: var(--green);   border-color: #2a5040; background: #1a3a2a; }
+    .tag-purple { color: #a07cf7;        border-color: #3a2a60; background: #2a1a4a; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo">🐟</div>
+    <h1>TEI Prototype</h1>
+    <p>Developer documentation for the maze prototype.</p>
+  </header>
+
+  <div class="doc-list">
+
+    <a class="doc-card" href="Docs/controls.html">
+      <div class="doc-icon icon-controls">🎮</div>
+      <div class="doc-body">
+        <h2>Controls &amp; Hotkeys</h2>
+        <p>Keyboard player controls, developer hotkeys, and Kinect gesture reference including movement, jump, and proximity ability swap.</p>
+        <div class="tags">
+          <span class="tag tag-blue">Keyboard</span>
+          <span class="tag tag-green">Kinect</span>
+          <span class="tag tag-blue">Hotkeys</span>
+        </div>
+      </div>
+      <div class="doc-arrow">→</div>
+    </a>
+
+    <a class="doc-card" href="Docs/mic-volume-to-fish-speed.html">
+      <div class="doc-icon icon-mic">🎙</div>
+      <div class="doc-body">
+        <h2>MicVolumeToFishSpeed — Parameter Reference</h2>
+        <p>Full breakdown of every Inspector parameter: auto-calibration, speed range, attack/decay smoothing, background color, and debug fields. Includes tuning scenarios.</p>
+        <div class="tags">
+          <span class="tag tag-green">Microphone</span>
+          <span class="tag tag-purple">Parameters</span>
+          <span class="tag tag-blue">Tuning</span>
+        </div>
+      </div>
+      <div class="doc-arrow">→</div>
+    </a>
+
+  </div>
+
+  <footer>
+    <p>
+      Source:
+      <a href="https://github.com/ETCK12demoAdmin/TEI_Prototype_JC" target="_blank">TEI_Prototype_JC</a>
+      &nbsp;·&nbsp; Built with GitHub Pages
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>
