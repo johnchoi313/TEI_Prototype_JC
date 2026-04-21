@@ -3555,7 +3555,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!20 &1076206474
 Camera:
   m_ObjectHideFlags: 0
@@ -4828,6 +4828,7 @@ MonoBehaviour:
   player1Ability: {fileID: 2845077376857192518}
   player2Ability: {fileID: 3999337673812770617}
   sharedFOVBudget: {fileID: 1979969747}
+  minimapCamera: {fileID: 1076206471}
   player1AbilityRenderer: {fileID: 2030442011321096525}
   player2AbilityRenderer: {fileID: 1991361825}
   breakWallMaterial: {fileID: 2100000, guid: 36e4aa3a5d007fa4e8f1e28b5141cd65, type: 2}

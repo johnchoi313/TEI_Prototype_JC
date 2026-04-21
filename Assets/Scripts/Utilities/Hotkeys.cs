@@ -13,6 +13,7 @@ using UnityEngine;
 /// Shift+A     — Show all / hide all UI panels (Mic, FPS, Logger, Kinect).
 /// Shift+Space — Start / stop logging (calls Logger.StartLogging / StopLogging).
 /// Shift+R     — Regenerate the maze. Stops logging first if a session is active.
+/// Shift+V     — Toggle visibility of the Minimap camera GameObject.
 /// Tab         — Swap fish abilities between players (BreakWall ↔ CollectStation).
 ///
 /// All visibility states are saved to PlayerPrefs and restored on next run.
@@ -27,6 +28,7 @@ public class Hotkeys : MonoBehaviour
     private const string PrefLoggerUI     = "Hotkeys_LoggerUI";
     private const string PrefShowAll      = "Hotkeys_ShowAll";
     private const string PrefUsingKinect  = "Hotkeys_UsingKinect";
+    private const string PrefMinimapUI    = "Hotkeys_MinimapUI";
 
     // ── Inspector references ──────────────────────────────────────────────────
 
@@ -70,6 +72,10 @@ public class Hotkeys : MonoBehaviour
     [Tooltip("Shared FOV budget — switches between keyboard and Kinect depth mode alongside the control scheme.")]
     public SharedFOVBudget sharedFOVBudget;
 
+    [Header("Shift+V — Minimap Camera Toggle")]
+    [Tooltip("The Minimap camera GameObject to show/hide when Shift+V is pressed.")]
+    public GameObject minimapCamera;
+
     [Header("Tab — Ability Swap")]
     [Tooltip("Renderer on Player 1's fish (or any indicator object) whose material is swapped on Tab.")]
     public Renderer player1AbilityRenderer;
@@ -91,16 +97,18 @@ public class Hotkeys : MonoBehaviour
     private bool _loggerVisible = true;
     private bool _allVisible    = true;
     private bool _usingKinect   = false;
+    private bool _minimapVisible = true;
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         LoadPrefs();
-        ApplyObject(kinectObject, _kinectVisible && _allVisible);
-        ApplyObject(micDebugUI,   _micUIVisible  && _allVisible);
-        ApplyObject(fpsDisplay,   _fpsVisible    && _allVisible);
-        ApplyObject(loggerUI,     _loggerVisible && _allVisible);
+        ApplyObject(kinectObject,  _kinectVisible  && _allVisible);
+        ApplyObject(micDebugUI,    _micUIVisible   && _allVisible);
+        ApplyObject(fpsDisplay,    _fpsVisible     && _allVisible);
+        ApplyObject(loggerUI,      _loggerVisible  && _allVisible);
+        ApplyObject(minimapCamera, _minimapVisible);
 
         // Restore saved control scheme, then apply it to the controllers.
         PlayerLightController reference = player1Controller != null ? player1Controller : player2Controller;
@@ -143,6 +151,9 @@ public class Hotkeys : MonoBehaviour
 
         if (shift && Input.GetKeyDown(KeyCode.R))
             RegenerateMaze();
+
+        if (shift && Input.GetKeyDown(KeyCode.V))
+            ToggleMinimapCamera();
 
         if (Input.GetKeyDown(KeyCode.Tab))
             SwapAbilities();
@@ -255,6 +266,17 @@ public class Hotkeys : MonoBehaviour
         Debug.Log("[Hotkeys] Maze regenerated (Shift+R).");
     }
 
+    private void ToggleMinimapCamera()
+    {
+        _minimapVisible = !_minimapVisible;
+        ApplyObject(minimapCamera, _minimapVisible);
+
+        PlayerPrefs.SetInt(PrefMinimapUI, _minimapVisible ? 1 : 0);
+        PlayerPrefs.Save();
+
+        Debug.Log($"[Hotkeys] Minimap camera {(_minimapVisible ? "shown" : "hidden")} (Shift+V).");
+    }
+
     private void SwapAbilities()
     {
         if (player1Ability == null || player2Ability == null)
@@ -332,11 +354,12 @@ public class Hotkeys : MonoBehaviour
 
     private void LoadPrefs()
     {
-        _kinectVisible = PlayerPrefs.GetInt(PrefKinectUI,   1) == 1;
-        _micUIVisible  = PlayerPrefs.GetInt(PrefMicUI,      1) == 1;
-        _fpsVisible    = PlayerPrefs.GetInt(PrefFPS,        1) == 1;
-        _loggerVisible = PlayerPrefs.GetInt(PrefLoggerUI,   1) == 1;
-        _allVisible    = PlayerPrefs.GetInt(PrefShowAll,    1) == 1;
+        _kinectVisible  = PlayerPrefs.GetInt(PrefKinectUI,   1) == 1;
+        _micUIVisible   = PlayerPrefs.GetInt(PrefMicUI,      1) == 1;
+        _fpsVisible     = PlayerPrefs.GetInt(PrefFPS,        1) == 1;
+        _loggerVisible  = PlayerPrefs.GetInt(PrefLoggerUI,   1) == 1;
+        _allVisible     = PlayerPrefs.GetInt(PrefShowAll,    1) == 1;
+        _minimapVisible = PlayerPrefs.GetInt(PrefMinimapUI,  1) == 1;
         // _usingKinect is loaded directly in Awake (needs Inspector fallback value)
     }
 }

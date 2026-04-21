@@ -220,6 +220,10 @@ public class MazeGenerator : MonoBehaviour
         PlacePlayers();
         FitCameraToMaze();
 
+        // Notify ScoreTracker of the new maze's breakable-wall and station counts
+        // so the debug UI immediately shows "0 / N" and all counters reset.
+        ScoreTracker.Instance?.ResetForNewMaze(BreakableWallCount, StationCount);
+
         Debug.Log($"[MazeGenerator] Maze generated — {_columns}×{_rows} cells, seed={seed}.");
     }
 

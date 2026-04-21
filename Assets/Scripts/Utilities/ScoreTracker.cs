@@ -9,6 +9,10 @@ using UnityEngine;
 /// Also runs a session timer displayed as MM:SS in a separate TMP_Text.
 /// All counters are read by Logger for CSV output.
 ///
+/// The debug UI shows progress as "X / Max" for walls and stations (e.g. "1 / 5")
+/// so players know how many remain. Call ResetForNewMaze() after each maze generation
+/// to update the maximums and zero the counters. TimesSwapped is also reset then.
+///
 /// SCENE SETUP
 ///   1. Create an empty GameObject (e.g. "ScoreTracker") in the scene.
 ///   2. Attach this component.
@@ -45,6 +49,12 @@ public class ScoreTracker : MonoBehaviour
     public int   TimesSwapped      { get; private set; }
     public float ElapsedSeconds    { get; private set; }
     public bool  TimerRunning      { get; private set; }
+
+    /// <summary>Total breakable walls that existed when the current maze was generated.</summary>
+    public int WallsMax      { get; private set; }
+
+    /// <summary>Total stations that existed when the current maze was generated.</summary>
+    public int StationsMax   { get; private set; }
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
@@ -115,15 +125,36 @@ public class ScoreTracker : MonoBehaviour
         RefreshUI();
     }
 
+    /// <summary>
+    /// Called by MazeGenerator after each generation. Zeroes all counters and
+    /// updates the per-maze maximums so the UI shows "0 / N" immediately.
+    /// </summary>
+    public void ResetForNewMaze(int wallsMax, int stationsMax)
+    {
+        WallsBroken       = 0;
+        StationsCollected = 0;
+        TimesSwapped      = 0;
+        WallsMax          = wallsMax;
+        StationsMax       = stationsMax;
+        ElapsedSeconds    = 0f;
+        TimerRunning      = false;
+        RefreshUI();
+        Debug.Log($"[ScoreTracker] Reset for new maze — walls max: {wallsMax}, stations max: {stationsMax}.");
+    }
+
     // ── Private ───────────────────────────────────────────────────────────────
 
     private void RefreshUI()
     {
         if (_wallsBrokenText != null)
-            _wallsBrokenText.text = $"Walls Broken: {WallsBroken}";
+            _wallsBrokenText.text = WallsMax > 0
+                ? $"Walls Broken: {WallsBroken} / {WallsMax}"
+                : $"Walls Broken: {WallsBroken}";
 
         if (_stationsCollectedText != null)
-            _stationsCollectedText.text = $"Stations Collected: {StationsCollected}";
+            _stationsCollectedText.text = StationsMax > 0
+                ? $"Stations Collected: {StationsCollected} / {StationsMax}"
+                : $"Stations Collected: {StationsCollected}";
 
         if (_timesSwappedText != null)
             _timesSwappedText.text = $"Ability Swaps: {TimesSwapped}";
