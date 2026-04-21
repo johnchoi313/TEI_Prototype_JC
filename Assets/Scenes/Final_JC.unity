@@ -1019,7 +1019,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 761956072025001769, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 761956072025001769, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2175,7 +2175,7 @@ MonoBehaviour:
   _kinect2: {fileID: 1975264713}
   _player1Ability: {fileID: 2845077376857192518}
   _player2Ability: {fileID: 3999337673812770617}
-  _touchDistance: 0.6
+  _touchDistance: 0.8
   _separateDistance: 1.2
   _player1Renderer: {fileID: 2030442011321096525}
   _player2Renderer: {fileID: 1991361825}
@@ -2330,7 +2330,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 761956072025001769, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 761956072025001769, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3549,22 +3549,13 @@ GameObject:
   m_Component:
   - component: {fileID: 1076206475}
   - component: {fileID: 1076206474}
-  - component: {fileID: 1076206473}
   m_Layer: 0
   m_Name: Main Camera (Minimap)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!81 &1076206473
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1076206471}
-  m_Enabled: 1
+  m_IsActive: 0
 --- !u!20 &1076206474
 Camera:
   m_ObjectHideFlags: 0
@@ -7437,13 +7428,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _spectrum: {fileID: 2005540831}
   _calibrationDuration: 1.5
-  _maxVolumeMultiplier: 4
+  _maxVolumeMultiplier: 3
   _minVolumeFloor: 0.001
   _minSpeed: 0.8
   _maxSpeed: 8
   _disabledSpeed: 4
-  _attackTime: 0.5
-  _decayTime: 2
+  _attackTime: 0.1
+  _decayTime: 70
   enableColorLerp: 1
   backgroundCamera: {fileID: 2133038660}
   bgColorMin: {r: 0.11747953, g: 0.12166251, b: 0.1509434, a: 1}
@@ -8109,6 +8100,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2133038661}
   - component: {fileID: 2133038660}
+  - component: {fileID: 2133038663}
   - component: {fileID: 2133038662}
   m_Layer: 0
   m_Name: Main Camera (FOVs)
@@ -8199,6 +8191,14 @@ MonoBehaviour:
   _holdDuration: 0.05
   _fadeOutDuration: 0.25
   _peakAlpha: 0.85
+--- !u!81 &2133038663
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2133038657}
+  m_Enabled: 1
 --- !u!1 &2140779834 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3892051972333089325, guid: b4be602b3a4b76e44a33b61547ebaafb, type: 3}
