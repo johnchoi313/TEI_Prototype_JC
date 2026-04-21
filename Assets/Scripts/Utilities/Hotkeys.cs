@@ -10,10 +10,11 @@ using UnityEngine;
 /// Shift+M     — Toggle visibility of the Microphone Debug UI panel.
 /// Shift+F     — Toggle visibility of the FPS display.
 /// Shift+L     — Toggle visibility of the Logger UI panel.
-/// Shift+A     — Show all / hide all UI panels (Mic, FPS, Logger, Kinect).
+/// Shift+A     — Master show/hide: turns every UI panel on or off together.
 /// Shift+Space — Start / stop logging (calls Logger.StartLogging / StopLogging).
 /// Shift+R     — Regenerate the maze. Stops logging first if a session is active.
 /// Shift+V     — Toggle visibility of the Minimap camera GameObject.
+/// Shift+S     — Show/hide SimpleSpectrum bars by offsetting +100 Y (no SetActive).
 /// Tab         — Swap fish abilities between players (BreakWall ↔ CollectStation).
 ///
 /// All visibility states are saved to PlayerPrefs and restored on next run.
@@ -26,9 +27,11 @@ public class Hotkeys : MonoBehaviour
     private const string PrefMicUI        = "Hotkeys_MicUI";
     private const string PrefFPS          = "Hotkeys_FPS";
     private const string PrefLoggerUI     = "Hotkeys_LoggerUI";
-    private const string PrefShowAll      = "Hotkeys_ShowAll";
     private const string PrefUsingKinect  = "Hotkeys_UsingKinect";
     private const string PrefMinimapUI    = "Hotkeys_MinimapUI";
+    private const string PrefSpectrumUI   = "Hotkeys_SpectrumUI";
+
+    private const float SpectrumHideOffset = 100f;
 
     // ── Inspector references ──────────────────────────────────────────────────
 
@@ -76,6 +79,10 @@ public class Hotkeys : MonoBehaviour
     [Tooltip("The Minimap camera GameObject to show/hide when Shift+V is pressed.")]
     public GameObject minimapCamera;
 
+    [Header("Shift+S — SimpleSpectrum Toggle")]
+    [Tooltip("SimpleSpectrum bars GameObject. Toggled by offsetting +100 Y instead of SetActive.")]
+    public GameObject spectrumBars;
+
     [Header("Tab — Ability Swap")]
     [Tooltip("Renderer on Player 1's fish (or any indicator object) whose material is swapped on Tab.")]
     public Renderer player1AbilityRenderer;
@@ -91,24 +98,35 @@ public class Hotkeys : MonoBehaviour
 
     // ── Runtime state ─────────────────────────────────────────────────────────
 
-    private bool _kinectVisible = true;
-    private bool _micUIVisible  = true;
-    private bool _fpsVisible    = true;
-    private bool _loggerVisible = true;
-    private bool _allVisible    = true;
-    private bool _usingKinect   = false;
-    private bool _minimapVisible = true;
+    private bool  _kinectVisible   = true;
+    private bool  _micUIVisible    = true;
+    private bool  _fpsVisible      = true;
+    private bool  _loggerVisible   = true;
+    private bool  _usingKinect     = false;
+    private bool  _minimapVisible  = true;
+    private bool  _spectrumVisible = true;
+    private float _spectrumOriginalY;
+
+    // Master toggle for Shift+A — does not affect individual panel states or prefs.
+    private bool  _allOn = true;
 
     // ── Unity ─────────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         LoadPrefs();
-        ApplyObject(kinectObject,  _kinectVisible  && _allVisible);
-        ApplyObject(micDebugUI,    _micUIVisible   && _allVisible);
-        ApplyObject(fpsDisplay,    _fpsVisible     && _allVisible);
-        ApplyObject(loggerUI,      _loggerVisible  && _allVisible);
+        ApplyObject(kinectObject,  _kinectVisible);
+        ApplyObject(micDebugUI,    _micUIVisible);
+        ApplyObject(fpsDisplay,    _fpsVisible);
+        ApplyObject(loggerUI,      _loggerVisible);
         ApplyObject(minimapCamera, _minimapVisible);
+
+        // Capture the scene-authored Y before any offset is applied, then restore state.
+        if (spectrumBars != null)
+        {
+            _spectrumOriginalY = spectrumBars.transform.position.y;
+            ApplySpectrumPosition(_spectrumVisible);
+        }
 
         // Restore saved control scheme, then apply it to the controllers.
         PlayerLightController reference = player1Controller != null ? player1Controller : player2Controller;
@@ -155,6 +173,9 @@ public class Hotkeys : MonoBehaviour
         if (shift && Input.GetKeyDown(KeyCode.V))
             ToggleMinimapCamera();
 
+        if (shift && Input.GetKeyDown(KeyCode.S))
+            ToggleSpectrum();
+
         if (Input.GetKeyDown(KeyCode.Tab))
             SwapAbilities();
     }
@@ -163,35 +184,20 @@ public class Hotkeys : MonoBehaviour
 
     private void ToggleShowAll()
     {
-        _allVisible = !_allVisible;
-
-        if (_allVisible)
-        {
-            // Restore individual states
-            ApplyObject(kinectObject, _kinectVisible);
-            ApplyObject(micDebugUI,   _micUIVisible);
-            ApplyObject(fpsDisplay,   _fpsVisible);
-            ApplyObject(loggerUI,     _loggerVisible);
-        }
-        else
-        {
-            // Hide everything regardless of individual states
-            ApplyObject(kinectObject, false);
-            ApplyObject(micDebugUI,   false);
-            ApplyObject(fpsDisplay,   false);
-            ApplyObject(loggerUI,     false);
-        }
-
-        PlayerPrefs.SetInt(PrefShowAll, _allVisible ? 1 : 0);
-        PlayerPrefs.Save();
-
-        Debug.Log($"[Hotkeys] Show all → {(_allVisible ? "restored" : "hidden")} (Shift+A).");
+        _allOn = !_allOn;
+        ApplyObject(kinectObject,  _allOn);
+        ApplyObject(micDebugUI,    _allOn);
+        ApplyObject(fpsDisplay,    _allOn);
+        ApplyObject(loggerUI,      _allOn);
+        ApplyObject(minimapCamera, _allOn);
+        ApplySpectrumPosition(_allOn);
+        Debug.Log($"[Hotkeys] All UI panels {(_allOn ? "shown" : "hidden")} (Shift+A).");
     }
 
     private void ToggleLoggerUI()
     {
         _loggerVisible = !_loggerVisible;
-        ApplyObject(loggerUI, _loggerVisible && _allVisible);
+        ApplyObject(loggerUI, _loggerVisible);
 
         PlayerPrefs.SetInt(PrefLoggerUI, _loggerVisible ? 1 : 0);
         PlayerPrefs.Save();
@@ -202,7 +208,7 @@ public class Hotkeys : MonoBehaviour
     private void ToggleMicDebugUI()
     {
         _micUIVisible = !_micUIVisible;
-        ApplyObject(micDebugUI, _micUIVisible && _allVisible);
+        ApplyObject(micDebugUI, _micUIVisible);
 
         PlayerPrefs.SetInt(PrefMicUI, _micUIVisible ? 1 : 0);
         PlayerPrefs.Save();
@@ -213,7 +219,7 @@ public class Hotkeys : MonoBehaviour
     private void ToggleFPSDisplay()
     {
         _fpsVisible = !_fpsVisible;
-        ApplyObject(fpsDisplay, _fpsVisible && _allVisible);
+        ApplyObject(fpsDisplay, _fpsVisible);
 
         PlayerPrefs.SetInt(PrefFPS, _fpsVisible ? 1 : 0);
         PlayerPrefs.Save();
@@ -240,7 +246,7 @@ public class Hotkeys : MonoBehaviour
     private void ToggleKinectObjects()
     {
         _kinectVisible = !_kinectVisible;
-        ApplyObject(kinectObject, _kinectVisible && _allVisible);
+        ApplyObject(kinectObject, _kinectVisible);
 
         PlayerPrefs.SetInt(PrefKinectUI, _kinectVisible ? 1 : 0);
         PlayerPrefs.Save();
@@ -275,6 +281,17 @@ public class Hotkeys : MonoBehaviour
         PlayerPrefs.Save();
 
         Debug.Log($"[Hotkeys] Minimap camera {(_minimapVisible ? "shown" : "hidden")} (Shift+V).");
+    }
+
+    private void ToggleSpectrum()
+    {
+        _spectrumVisible = !_spectrumVisible;
+        ApplySpectrumPosition(_spectrumVisible);
+
+        PlayerPrefs.SetInt(PrefSpectrumUI, _spectrumVisible ? 1 : 0);
+        PlayerPrefs.Save();
+
+        Debug.Log($"[Hotkeys] Spectrum bars {(_spectrumVisible ? "shown" : "hidden")} (Shift+S).");
     }
 
     private void SwapAbilities()
@@ -332,6 +349,14 @@ public class Hotkeys : MonoBehaviour
         if (go != null) go.SetActive(visible);
     }
 
+    private void ApplySpectrumPosition(bool visible)
+    {
+        if (spectrumBars == null) return;
+        Vector3 pos = spectrumBars.transform.position;
+        pos.y = visible ? _spectrumOriginalY : _spectrumOriginalY + SpectrumHideOffset;
+        spectrumBars.transform.position = pos;
+    }
+
     private void SetPlayer(PlayerLightController lc,
                            PlayerLightController.ControlScheme keyboardScheme)
     {
@@ -354,12 +379,12 @@ public class Hotkeys : MonoBehaviour
 
     private void LoadPrefs()
     {
-        _kinectVisible  = PlayerPrefs.GetInt(PrefKinectUI,   1) == 1;
-        _micUIVisible   = PlayerPrefs.GetInt(PrefMicUI,      1) == 1;
-        _fpsVisible     = PlayerPrefs.GetInt(PrefFPS,        1) == 1;
-        _loggerVisible  = PlayerPrefs.GetInt(PrefLoggerUI,   1) == 1;
-        _allVisible     = PlayerPrefs.GetInt(PrefShowAll,    1) == 1;
-        _minimapVisible = PlayerPrefs.GetInt(PrefMinimapUI,  1) == 1;
+        _kinectVisible  = PlayerPrefs.GetInt(PrefKinectUI,  1) == 1;
+        _micUIVisible   = PlayerPrefs.GetInt(PrefMicUI,     1) == 1;
+        _fpsVisible     = PlayerPrefs.GetInt(PrefFPS,       1) == 1;
+        _loggerVisible  = PlayerPrefs.GetInt(PrefLoggerUI,  1) == 1;
+        _minimapVisible  = PlayerPrefs.GetInt(PrefMinimapUI,  1) == 1;
+        _spectrumVisible = PlayerPrefs.GetInt(PrefSpectrumUI, 1) == 1;
         // _usingKinect is loaded directly in Awake (needs Inspector fallback value)
     }
 }
