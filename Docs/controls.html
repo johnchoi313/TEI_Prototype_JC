@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEI Prototype — Controls &amp; Hotkeys</title>
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #181c27;
+      --card:     #1e2333;
+      --border:   #2a3050;
+      --accent:   #4f8ef7;
+      --accent2:  #7c5cf7;
+      --green:    #3ecf8e;
+      --orange:   #f7a74f;
+      --red:      #f76f6f;
+      --text:     #d8dff0;
+      --muted:    #7a85a3;
+      --key-bg:   #252c42;
+      --key-bdr:  #3a4466;
+      --key-shd:  #111827;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Layout ── */
+    .page { max-width: 960px; margin: 0 auto; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 48px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+
+    /* ── Sections ── */
+    section { margin-bottom: 52px; }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .card-header {
+      background: var(--surface);
+      padding: 10px 18px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    tr:not(:last-child) td {
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 11px 18px;
+      vertical-align: middle;
+    }
+
+    td:first-child {
+      width: 240px;
+      white-space: nowrap;
+    }
+
+    td.desc {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    td.desc em {
+      color: var(--text);
+      font-style: normal;
+    }
+
+    /* ── Key badges ── */
+    .keys {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+    }
+
+    kbd {
+      display: inline-block;
+      background: var(--key-bg);
+      border: 1px solid var(--key-bdr);
+      border-bottom-width: 3px;
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.82rem;
+      color: #e2e8ff;
+      box-shadow: 0 2px 0 var(--key-shd);
+      line-height: 1.5;
+    }
+
+    .plus {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ── Persisted badge ── */
+    .badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border-radius: 4px;
+      padding: 2px 6px;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+
+    .badge-saved   { background: #1a3a2a; color: var(--green);  border: 1px solid #2a5a40; }
+    .badge-session { background: #1a1e36; color: #6b7fcc;        border: 1px solid #2a3260; }
+    .badge-p1      { background: #1a2a3a; color: var(--accent);  border: 1px solid #2a4060; }
+    .badge-p2      { background: #2a1a3a; color: var(--accent2); border: 1px solid #3a2a60; }
+
+    /* ── Two-column player grid ── */
+    .player-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .player-grid { grid-template-columns: 1fr; }
+      td:first-child { width: auto; }
+    }
+
+    /* ── Kinect diagram ── */
+    .kinect-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 12px;
+    }
+
+    .kinect-diagram h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .gesture-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .gesture {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .gesture-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .icon-move    { background: #1a2a4a; }
+    .icon-jump    { background: #1a3a2a; }
+    .icon-swap    { background: #2a1a3a; }
+
+    .gesture-body strong {
+      display: block;
+      color: #fff;
+      font-size: 0.95rem;
+      margin-bottom: 2px;
+    }
+
+    .gesture-body p {
+      color: var(--muted);
+      font-size: 0.87rem;
+      line-height: 1.5;
+    }
+
+    .gesture-body p em {
+      color: var(--text);
+      font-style: normal;
+    }
+
+    /* ── Note box ── */
+    .note {
+      background: #1a1e2e;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .note strong { color: var(--text); }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>TEI Prototype — Controls &amp; Hotkeys</h1>
+    <p>Reference for keyboard controls, developer hotkeys, and Kinect gesture mappings.</p>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!--  PLAYER CONTROLS — KEYBOARD                                           -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-title">Keyboard Player Controls</div>
+
+    <div class="player-grid">
+
+      <!-- Player 1 -->
+      <div class="card">
+        <div class="card-header">Player 1 <span class="badge badge-p1">WASD</span></div>
+        <table>
+          <tr>
+            <td><div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div></td>
+            <td class="desc">Move light</td>
+          </tr>
+          <tr>
+            <td><div class="keys"><kbd>E</kbd></div></td>
+            <td class="desc">Use ability <em>(Break Wall or Collect Station)</em></td>
+          </tr>
+          <tr>
+            <td><div class="keys"><kbd>R</kbd></div></td>
+            <td class="desc">Zoom in FOV <em>(hold)</em></td>
+          </tr>
+          <tr>
+            <td><div class="keys"><kbd>F</kbd></div></td>
+            <td class="desc">Zoom out FOV <em>(hold)</em></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Player 2 -->
+      <div class="card">
+        <div class="card-header">Player 2 <span class="badge badge-p2">Arrow Keys</span></div>
+        <table>
+          <tr>
+            <td><div class="keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></div></td>
+            <td class="desc">Move light</td>
+          </tr>
+          <tr>
+            <td><div class="keys"><kbd>Enter</kbd></div></td>
+            <td class="desc">Use ability <em>(Break Wall or Collect Station)</em></td>
+          </tr>
+          <tr>
+            <td><div class="keys"><kbd>Right Shift</kbd></div></td>
+            <td class="desc">Zoom in FOV <em>(hold)</em></td>
+          </tr>
+          <tr>
+            <td><div class="keys"><kbd>Right Ctrl</kbd></div></td>
+            <td class="desc">Zoom out FOV <em>(hold)</em></td>
+          </tr>
+        </table>
+      </div>
+
+    </div><!-- /player-grid -->
+
+    <div class="card">
+      <div class="card-header">Shared — Both Players</div>
+      <table>
+        <tr>
+          <td><div class="keys"><kbd>Tab</kbd></div></td>
+          <td class="desc">Swap fish abilities between Player 1 and Player 2
+            <em>(BreakWall ↔ CollectStation)</em>.
+            Triggers score increment and screen flash.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>Abilities:</strong> Each fish carries one ability at a time.
+      <em>Break Wall</em> detonates an expanding sphere that destroys nearby breakable wall segments.
+      <em>Collect Station</em> detonates a sphere that collects nearby station objects.
+      Both have a cooldown between uses.
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!--  KINECT CONTROLS                                                       -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-title">Kinect Controls</div>
+
+    <div class="kinect-diagram">
+      <h3>Gesture Reference</h3>
+      <div class="gesture-list">
+
+        <div class="gesture">
+          <div class="gesture-icon icon-move">🖐</div>
+          <div class="gesture-body">
+            <strong>Move Light — Both Hands Relative to Chest</strong>
+            <p>
+              The average world-space offset of both hands from the chest bone drives the input axis.<br>
+              <em>Hands left of chest</em> → move left &nbsp;|&nbsp;
+              <em>Hands right of chest</em> → move right<br>
+              <em>Hands above chest</em> → move up &nbsp;|&nbsp;
+              <em>Hands below chest</em> → move down<br>
+              A deadzone of <em>~15 cm</em> is ignored; full input is reached at <em>~60 cm</em> offset.
+              Diagonal movement is supported and normalized.
+            </p>
+          </div>
+        </div>
+
+        <div class="gesture">
+          <div class="gesture-icon icon-jump">🦵</div>
+          <div class="gesture-body">
+            <strong>Use Ability — Jump (Pelvis Rise)</strong>
+            <p>
+              Jump detection watches the pelvis bone against a rolling 2-second baseline height.<br>
+              The ability fires the instant the pelvis rises <em>~12 cm above the baseline</em>.
+              The signal stays active for <em>~0.25 seconds</em>, then resets once the pelvis
+              falls back within <em>~4 cm</em> of baseline — ready for the next jump.
+            </p>
+          </div>
+        </div>
+
+        <div class="gesture">
+          <div class="gesture-icon icon-swap">🤝</div>
+          <div class="gesture-body">
+            <strong>Swap Abilities — Players Touch Chests</strong>
+            <p>
+              When the two players' <em>chest bones come within ~60 cm</em> of each other,
+              their fish abilities are swapped immediately (same effect as pressing <kbd>Tab</kbd>).
+              Players must then <em>move apart beyond ~120 cm</em> before the next proximity
+              swap can trigger — this prevents repeated accidental swaps while standing close.
+              The swap increments the score counter and triggers the screen flash.
+            </p>
+          </div>
+        </div>
+
+      </div><!-- /gesture-list -->
+    </div><!-- /kinect-diagram -->
+
+    <div class="note">
+      <strong>Player assignment:</strong> Player 1 uses Kinect Body ID 0, Player 2 uses Body ID 1.
+      Switch between Keyboard and Kinect modes at any time with <kbd>Shift</kbd> + <kbd>C</kbd>.
+      The FOV depth mode also switches automatically alongside the control scheme.
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!--  DEVELOPER HOTKEYS                                                     -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-title">Developer Hotkeys</div>
+
+    <!-- UI Visibility -->
+    <div class="card">
+      <div class="card-header">UI Visibility — Individually Persisted</div>
+      <table>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></div>
+          </td>
+          <td class="desc">
+            Toggle Kinect debug UI panel
+            <span class="badge badge-saved">Saved</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>M</kbd></div>
+          </td>
+          <td class="desc">
+            Toggle microphone debug UI panel
+            <span class="badge badge-saved">Saved</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></div>
+          </td>
+          <td class="desc">
+            Toggle FPS display
+            <span class="badge badge-saved">Saved</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>L</kbd></div>
+          </td>
+          <td class="desc">
+            Toggle logger UI panel
+            <span class="badge badge-saved">Saved</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></div>
+          </td>
+          <td class="desc">
+            Toggle minimap camera
+            <span class="badge badge-saved">Saved</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></div>
+          </td>
+          <td class="desc">
+            Toggle SimpleSpectrum bars <em>(moves object ±100 units on Y — no SetActive)</em>
+            <span class="badge badge-saved">Saved</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></div>
+          </td>
+          <td class="desc">
+            Master show / hide — turns <em>all</em> UI panels on or off together.
+            Does not affect individual panel states or their saved prefs.
+            <span class="badge badge-session">Session only</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Session controls -->
+    <div class="card">
+      <div class="card-header">Session Controls</div>
+      <table>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></div>
+          </td>
+          <td class="desc">Start / stop logging session. Writes CSV output via Logger.</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></div>
+          </td>
+          <td class="desc">
+            Regenerate maze. <em>Stops any active logging session first.</em>
+            Resets score counters and updates max walls / stations in the debug UI.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>C</kbd></div>
+          </td>
+          <td class="desc">
+            Toggle control scheme for both players:
+            <em>Keyboard ↔ Kinect.</em>
+            P1 switches WASD ↔ Body 0; P2 switches Arrow Keys ↔ Body 1.
+            FOV depth mode switches automatically.
+            <span class="badge badge-saved">Saved</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>Saved</strong> hotkeys write their state to PlayerPrefs and restore it on the next run.
+      <strong>Session only</strong> hotkeys reset to default each time the application starts.
+    </div>
+
+  </section>
+
+  <footer>
+    <p>TEI Prototype — generated from source: <code>Hotkeys.cs</code>, <code>PlayerLightController.cs</code>,
+    <code>FishAbility.cs</code>, <code>KinectPlayerController.cs</code>, <code>KinectAbilitySwap.cs</code></p>
+  </footer>
+
+</div><!-- /page -->
+</body>
+</html>
