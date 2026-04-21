@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MicVolumeToFishSpeed — Parameter Reference</title>
+  <style>
+    :root {
+      --bg:      #0f1117;
+      --surface: #181c27;
+      --card:    #1e2333;
+      --border:  #2a3050;
+      --accent:  #4f8ef7;
+      --green:   #3ecf8e;
+      --orange:  #f7a74f;
+      --red:     #f76f6f;
+      --purple:  #a07cf7;
+      --teal:    #3ecfcf;
+      --text:    #d8dff0;
+      --muted:   #7a85a3;
+      --code-bg: #141824;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      padding: 40px 24px 80px;
+    }
+
+    .page { max-width: 900px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 48px;
+    }
+
+    .breadcrumb {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+    }
+
+    .breadcrumb span { color: var(--accent); }
+
+    header h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    header h1 .class-name {
+      color: var(--accent);
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 8px;
+      max-width: 700px;
+    }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    section { margin-bottom: 48px; }
+
+    /* ── Flow diagram ── */
+    .flow {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 12px;
+    }
+
+    .flow-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 18px;
+    }
+
+    .flow-steps {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .flow-step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .flow-step .label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .flow-step .value { color: #fff; font-weight: 500; }
+
+    .flow-arrow {
+      color: var(--muted);
+      font-size: 1.1rem;
+      padding: 0 2px;
+    }
+
+    .step-mic    .label { color: var(--teal); }
+    .step-cal    .label { color: var(--orange); }
+    .step-rms    .label { color: var(--purple); }
+    .step-map    .label { color: var(--accent); }
+    .step-smooth .label { color: var(--green); }
+    .step-out    .label { color: #fff; }
+
+    /* ── Parameter cards ── */
+    .param-group {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .param-group-header {
+      background: var(--surface);
+      padding: 10px 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .param-group-header .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .param {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .param:last-child { border-bottom: none; }
+
+    .param-name-row {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .param-name {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.9rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .param-type {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .param-default {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.75rem;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: var(--orange);
+    }
+
+    .param-desc {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    .param-desc strong { color: var(--text); font-weight: 600; }
+    .param-desc code {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.82rem;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: var(--purple);
+    }
+
+    .param-tip {
+      margin-top: 8px;
+      background: #1a1e2e;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 5px 5px 0;
+      padding: 8px 12px;
+      font-size: 0.83rem;
+      color: var(--muted);
+    }
+
+    .param-tip strong { color: var(--text); }
+
+    /* ── Tuning range visual ── */
+    .range-bar {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+
+    .range-label { color: var(--muted); width: 50px; text-align: right; }
+    .range-label.right { text-align: left; }
+
+    .range-track {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      position: relative;
+    }
+
+    .range-fill {
+      position: absolute;
+      height: 100%;
+      border-radius: 3px;
+      left: 0;
+    }
+
+    .range-marker {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+    }
+
+    /* ── Debug table ── */
+    .debug-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .debug-table td {
+      padding: 10px 16px;
+      font-size: 0.87rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .debug-table tr:last-child td { border-bottom: none; }
+
+    .debug-table td:first-child {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.82rem;
+      color: var(--purple);
+      white-space: nowrap;
+      width: 210px;
+    }
+
+    .debug-table td:last-child { color: var(--muted); }
+    .debug-table td:last-child strong { color: var(--text); }
+
+    /* ── Tips grid ── */
+    .tips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) { .tips-grid { grid-template-columns: 1fr; } }
+
+    .tip-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .tip-card h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .tip-card p {
+      font-size: 0.83rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .tip-card p strong { color: var(--text); }
+    .tip-card p code {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.8rem;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 4px;
+      color: var(--orange);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="breadcrumb">Scripts / Player / <span>MicVolumeToFishSpeed.cs</span></div>
+    <h1><span class="class-name">MicVolumeToFishSpeed</span> — Parameter Reference</h1>
+    <p>
+      Maps live microphone volume to fish follow speed each frame.
+      Volume is read from a SimpleSpectrum instance, auto-calibrated against ambient noise,
+      and smoothed before being applied to any number of PlayerFishControllers.
+    </p>
+  </header>
+
+  <!-- ── Signal Flow ── -->
+  <section>
+    <div class="section-title">Signal Flow</div>
+    <div class="flow">
+      <div class="flow-title">How a mic sound becomes a fish speed value</div>
+      <div class="flow-steps">
+        <div class="flow-step step-mic">
+          <div class="label">1 · Input</div>
+          <div class="value">Microphone → SimpleSpectrum</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step step-rms">
+          <div class="label">2 · RMS</div>
+          <div class="value">Output bars averaged to<br>single volume value (0–1)</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step step-cal">
+          <div class="label">3 · Calibration</div>
+          <div class="value">Volume remapped against<br>auto-detected noise floor</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step step-map">
+          <div class="label">4 · Speed Map</div>
+          <div class="value">[minVolume → maxVolume]<br>↓<br>[minSpeed → maxSpeed]</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step step-smooth">
+          <div class="label">5 · Smoothing</div>
+          <div class="value">Attack / Decay RC filter<br>prevents jarring snaps</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step step-out">
+          <div class="label">6 · Output</div>
+          <div class="value">CurrentSpeed → each<br>PlayerFishController</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── References ── -->
+  <section>
+    <div class="section-title">References</div>
+    <div class="param-group">
+      <div class="param-group-header">
+        <div class="dot" style="background:#3ecfcf"></div>
+        Inspector — References
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Spectrum</span>
+          <span class="param-type">SimpleSpectrum</span>
+          <span class="param-default">null</span>
+        </div>
+        <div class="param-desc">
+          The <strong>SimpleSpectrum</strong> component that reads from the microphone.
+          Must be configured with <code>SourceType = MicrophoneInput</code> and
+          <code>isEnabled = true</code> at runtime. This is the sole audio source —
+          no Unity AudioSource or Microphone API is touched directly.
+        </div>
+        <div class="param-tip">
+          <strong>Required.</strong> Without this, the component outputs <code>minSpeed</code> constantly.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Auto-Calibration ── -->
+  <section>
+    <div class="section-title">Auto-Calibration</div>
+    <div class="param-group">
+      <div class="param-group-header">
+        <div class="dot" style="background:#f7a74f"></div>
+        Inspector — Auto-Calibration
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Calibration Duration</span>
+          <span class="param-type">float (seconds)</span>
+          <span class="param-default">1.5</span>
+        </div>
+        <div class="param-desc">
+          How long the component listens to ambient noise on startup before setting volume thresholds.
+          During this window <strong>fish stay at minimum speed</strong> — the calibration is silent from the player's perspective.
+          After the window closes, <code>minVolume</code> is set to the averaged ambient RMS.
+        </div>
+        <div class="param-tip">
+          <strong>Longer = more stable noise floor, but fish are slow at the start of each session.</strong>
+          1–2 s is a good default. Increase if the mic takes time to warm up.
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Max Volume Multiplier</span>
+          <span class="param-type">float (×)</span>
+          <span class="param-default">4</span>
+        </div>
+        <div class="param-desc">
+          After calibration: <code>maxVolume = ambientRMS × this value</code>.
+          A value of <strong>4</strong> means the player must be <em>4× louder than ambient</em> to reach full speed.
+          A value of <strong>2</strong> makes full speed easier to hit; <strong>8</strong> requires very loud input.
+        </div>
+        <div class="range-bar">
+          <span class="range-label">Easy (2×)</span>
+          <div class="range-track">
+            <div class="range-fill" style="width:100%;background:linear-gradient(to right,#3ecf8e,#f76f6f)"></div>
+            <div class="range-marker" style="left:25%;background:#f7a74f"></div>
+          </div>
+          <span class="range-label right">Loud (8×)</span>
+        </div>
+        <div class="param-tip">
+          <strong>Lower = more responsive to quiet environments.</strong>
+          Raise this if players in a noisy space keep accidentally hitting max speed.
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Min Volume Floor</span>
+          <span class="param-type">float (0–1)</span>
+          <span class="param-default">0.001</span>
+        </div>
+        <div class="param-desc">
+          Absolute lower bound for <code>minVolume</code>.
+          Prevents instability when the mic picks up near-zero signal (e.g. muted input, bad hardware).
+          If the calibrated ambient RMS falls below this value, this floor is used instead.
+        </div>
+        <div class="param-tip">
+          <strong>Rarely needs changing.</strong> Only raise it if you see erratic speed behavior with a very quiet mic.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Speed Range ── -->
+  <section>
+    <div class="section-title">Speed Range</div>
+    <div class="param-group">
+      <div class="param-group-header">
+        <div class="dot" style="background:#4f8ef7"></div>
+        Inspector — Speed Range
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Min Speed</span>
+          <span class="param-type">float (wu/s)</span>
+          <span class="param-default">1</span>
+        </div>
+        <div class="param-desc">
+          Fish follow speed when the room is at ambient noise level (or below).
+          <strong>This is the resting speed</strong> — the fish still moves toward its light at this rate
+          during silence. Set to <code>0</code> for a fully stopped fish at silence, or higher to keep
+          the fish always responsive.
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Max Speed</span>
+          <span class="param-type">float (wu/s)</span>
+          <span class="param-default">10</span>
+        </div>
+        <div class="param-desc">
+          Fish follow speed at peak volume (when input reaches <code>maxVolume</code>).
+          Should be balanced against the maze's cell size — too high and the fish
+          will overshoot corners and struggle to navigate.
+        </div>
+        <div class="param-tip">
+          <strong>Also used by PlayerFishController's particle emission</strong> when
+          <em>Use Driver Speed Range</em> is enabled — particles scale proportionally
+          with this same range.
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Disabled Speed</span>
+          <span class="param-type">float (wu/s)</span>
+          <span class="param-default">4</span>
+        </div>
+        <div class="param-desc">
+          Constant speed output when the mic is set to <strong>None</strong> (i.e. mic-driven mode is off).
+          This is passed directly as <code>CurrentSpeed</code> with no smoothing applied.
+          Should match the <em>Follow Speed</em> field on the paired <code>PlayerFishController</code>
+          so there is no jump when toggling between mic and no-mic mode.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Smoothing ── -->
+  <section>
+    <div class="section-title">Smoothing</div>
+    <div class="param-group">
+      <div class="param-group-header">
+        <div class="dot" style="background:#3ecf8e"></div>
+        Inspector — Smoothing
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Attack Time</span>
+          <span class="param-type">float (seconds)</span>
+          <span class="param-default">0.08</span>
+        </div>
+        <div class="param-desc">
+          How quickly speed <strong>rises</strong> when the player gets louder.
+          Implemented as an exponential RC filter: smaller values = snappier attack.
+          At <code>0.08 s</code> the fish responds to a shout almost instantly.
+        </div>
+        <div class="range-bar">
+          <span class="range-label">Instant (0.01)</span>
+          <div class="range-track">
+            <div class="range-fill" style="width:100%;background:linear-gradient(to right,#4f8ef7,#1a1e36)"></div>
+            <div class="range-marker" style="left:15%;background:#4f8ef7"></div>
+          </div>
+          <span class="range-label right">Sluggish (0.5+)</span>
+        </div>
+        <div class="param-tip">
+          <strong>Keep Attack short (0.05–0.15 s)</strong> so players feel an immediate reaction when they speak.
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Decay Time</span>
+          <span class="param-type">float (seconds)</span>
+          <span class="param-default">2.5</span>
+        </div>
+        <div class="param-desc">
+          How slowly speed <strong>falls</strong> after the player goes quiet.
+          A long decay makes the fish coast at high speed briefly after a burst of sound —
+          rewarding sustained vocalization and preventing jerky stop-start motion.
+        </div>
+        <div class="range-bar">
+          <span class="range-label">Snappy (0.3)</span>
+          <div class="range-track">
+            <div class="range-fill" style="width:100%;background:linear-gradient(to right,#3ecf8e33,#3ecf8e)"></div>
+            <div class="range-marker" style="left:55%;background:#3ecf8e"></div>
+          </div>
+          <span class="range-label right">Long (5+)</span>
+        </div>
+        <div class="param-tip">
+          <strong>A longer decay (2–4 s) feels more fluid</strong> and forgiving.
+          Shorter values give a more direct, arcade feel.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Camera Background Color ── -->
+  <section>
+    <div class="section-title">Camera Background Color</div>
+    <div class="param-group">
+      <div class="param-group-header">
+        <div class="dot" style="background:#a07cf7"></div>
+        Inspector — Camera Background Color
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Enable Color Lerp</span>
+          <span class="param-type">bool</span>
+          <span class="param-default">true</span>
+        </div>
+        <div class="param-desc">
+          Master switch for background color feedback. When off, the camera background is never touched.
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Background Camera</span>
+          <span class="param-type">Camera</span>
+          <span class="param-default">null</span>
+        </div>
+        <div class="param-desc">
+          The camera whose <code>backgroundColor</code> is lerped each frame.
+          The component forces <strong>Clear Flags → Solid Color</strong> automatically so the tint
+          is always visible. Leave unassigned to disable color feedback even if
+          <em>Enable Color Lerp</em> is on.
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Bg Color Min</span>
+          <span class="param-type">Color</span>
+          <span class="param-default">black</span>
+        </div>
+        <div class="param-desc">
+          Background color when fish speed equals <code>minSpeed</code> (silence).
+        </div>
+      </div>
+
+      <div class="param">
+        <div class="param-name-row">
+          <span class="param-name">Bg Color Max</span>
+          <span class="param-type">Color</span>
+          <span class="param-default">(0.1, 0.2, 0.5)</span>
+        </div>
+        <div class="param-desc">
+          Background color when fish speed equals <code>maxSpeed</code> (peak volume).
+          The lerp uses the same 0–1 <em>t</em> value as the speed mapping, so color and
+          fish speed always track each other exactly.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Debug Fields ── -->
+  <section>
+    <div class="section-title">Debug Fields (Inspector Read-Only)</div>
+    <div class="param-group">
+      <table class="debug-table">
+        <tr>
+          <td>Is Calibrating</td>
+          <td><strong>True</strong> during the startup noise-floor sample window. Fish hold at min speed.</td>
+        </tr>
+        <tr>
+          <td>Debug Ambient RMS</td>
+          <td>The averaged ambient noise level measured during calibration. Becomes <code>minVolume</code>.</td>
+        </tr>
+        <tr>
+          <td>Debug Current Volume</td>
+          <td>Live RMS of the spectrum output this frame (0–1). Useful for checking mic sensitivity.</td>
+        </tr>
+        <tr>
+          <td>Debug Min Volume</td>
+          <td>The calibrated lower threshold. Volume at or below this → <code>minSpeed</code>.</td>
+        </tr>
+        <tr>
+          <td>Debug Max Volume</td>
+          <td>The calibrated upper threshold (<code>ambientRMS × maxVolumeMultiplier</code>). Volume at or above this → <code>maxSpeed</code>.</td>
+        </tr>
+        <tr>
+          <td>Debug Current Speed</td>
+          <td>The smoothed speed value being sent to fish controllers <strong>right now</strong>.</td>
+        </tr>
+        <tr>
+          <td>Debug Color T</td>
+          <td>0–1 blend value fed into the background color lerp. 0 = <em>Bg Color Min</em>, 1 = <em>Bg Color Max</em>.</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Tuning Tips ── -->
+  <section>
+    <div class="section-title">Tuning Scenarios</div>
+    <div class="tips-grid">
+
+      <div class="tip-card">
+        <h4>Fish feels unresponsive to voice</h4>
+        <p>
+          Lower <strong>Max Volume Multiplier</strong> (try <code>2</code>) so full speed is easier to reach.
+          Also lower <strong>Attack Time</strong> (try <code>0.04</code>) for a snappier rise.
+          Check <em>Debug Current Volume</em> — if it barely moves when you speak, the mic gain may be too low in SimpleSpectrum.
+        </p>
+      </div>
+
+      <div class="tip-card">
+        <h4>Fish zooms off at ambient noise</h4>
+        <p>
+          The noise floor calibration may have completed too early or in a noisy environment.
+          Re-run calibration with <strong>RecalibrateAmbient()</strong> in a quieter moment.
+          Increase <strong>Max Volume Multiplier</strong> (try <code>6–8</code>) to widen the dead zone between ambient and full speed.
+        </p>
+      </div>
+
+      <div class="tip-card">
+        <h4>Speed drops too fast between sounds</h4>
+        <p>
+          Increase <strong>Decay Time</strong> (try <code>3–5 s</code>).
+          This lets the fish coast at high speed for longer between bursts,
+          giving players time to breathe without losing momentum.
+        </p>
+      </div>
+
+      <div class="tip-card">
+        <h4>Fish too slow / too fast overall</h4>
+        <p>
+          Adjust <strong>Min Speed</strong> and <strong>Max Speed</strong> directly.
+          Remember: if <em>Use Driver Speed Range</em> is on in <strong>PlayerFishController</strong>,
+          the particle emission range will also shift automatically to match.
+        </p>
+      </div>
+
+      <div class="tip-card">
+        <h4>Using without a microphone</h4>
+        <p>
+          Set mic to <strong>None</strong> via the debug UI (calls <code>SetMicDisabled(true)</code>).
+          Fish will move at <strong>Disabled Speed</strong> constantly.
+          Make sure this matches the <em>Follow Speed</em> on <code>PlayerFishController</code>.
+        </p>
+      </div>
+
+      <div class="tip-card">
+        <h4>Multiple fish, one mic</h4>
+        <p>
+          Place a single <code>MicVolumeToFishSpeed</code> on a shared manager object.
+          Assign it to the <strong>Mic Volume Driver</strong> field on each
+          <code>PlayerFishController</code>. Both fish will respond to the same voice simultaneously.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <p>Source: <code>Scripts/Player/MicVolumeToFishSpeed.cs</code></p>
+  </footer>
+
+</div>
+</body>
+</html>
