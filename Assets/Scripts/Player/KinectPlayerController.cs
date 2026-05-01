@@ -36,6 +36,10 @@ public class KinectPlayerController : MonoBehaviour
     [Tooltip("World transform of the pelvis/hips bone — used for jump detection")]
     public Transform pelvis;
 
+    [Header("Flip X")]
+    [Tooltip("Flip the X axis of the input")]
+    public bool flipX = false;
+
     [Header("Hand Direction")]
     [Tooltip("Minimum hand-to-chest distance (metres) before input registers")]
     public float deadzone = 0.15f;
@@ -51,7 +55,6 @@ public class KinectPlayerController : MonoBehaviour
     public float jumpFallThreshold = 0.04f;
     [Tooltip("How long (seconds) the jump signal stays true after detection")]
     public float jumpHoldTime      = 0.25f;
-
 
     [Header("Debug")]
     [Tooltip("Optional TextMeshPro component to display live output values")]
@@ -99,8 +102,6 @@ public class KinectPlayerController : MonoBehaviour
     private bool  _jumpArmed;
     private float _jumpTimer;
 
-
-
     // =========================================================================
     //  Unity lifecycle
     // =========================================================================
@@ -130,7 +131,6 @@ public class KinectPlayerController : MonoBehaviour
         UpdateDebugText();
     }
 
-
     // =========================================================================
     //  Direction — average hand world-position offset from chest
     // =========================================================================
@@ -142,7 +142,7 @@ public class KinectPlayerController : MonoBehaviour
         Vector3 avg       = (offsetL + offsetR) * 0.5f;
 
         // X offset = left/right (negated to match screen), Y offset = up/down
-        float inputX = ApplyDeadzone(-avg.x);
+        float inputX = ApplyDeadzone(flipX ? -avg.x : avg.x);
         float inputY = ApplyDeadzone(avg.y);
 
         Vector2 result = new Vector2(inputX, inputY);
