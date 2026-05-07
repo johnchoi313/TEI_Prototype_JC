@@ -9,7 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 761956072025001769}
-  - component: {fileID: 4158498216278496248}
   - component: {fileID: 5078232327460202308}
   m_Layer: 0
   m_Name: '[Brekel_Body_v3_TCP] Player'
@@ -34,20 +33,6 @@ Transform:
   - {fileID: 6072579945945231644}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4158498216278496248
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8020679541443278878}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26442606e5b9a0d4e9eccd8057d558de, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  host: localhost
-  port: 8844
 --- !u!114 &5078232327460202308
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60,8 +45,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b389ec48d8a5524a8f58bc79f0c4566, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  receiver: {fileID: 4158498216278496248}
+  receiver: {fileID: 0}
   character: {fileID: 6849398777175452582}
+  useOrchestratorAssignment: 0
   body_ID: 0
   applyPositionsToAll: 1
   hips: {fileID: 8846385761796850408}

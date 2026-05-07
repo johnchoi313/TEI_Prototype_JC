@@ -969,8 +969,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 246869931}
+  - component: {fileID: 246869932}
   m_Layer: 0
-  m_Name: Flip Kinect Transform
+  m_Name: Orchestrator (And Flip Kinect Transform)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -993,6 +994,25 @@ Transform:
   - {fileID: 1975264714}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &246869932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246869930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6655b56c351c94f40ad8ada743773878, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  receiver: {fileID: 1399659300}
+  targets:
+  - {fileID: 307588642}
+  - {fileID: 771096566}
+  maxAssignmentDistance: 1.5
+  searchAfterStaleSeconds: 0.5
+  positionResetSeconds: 5
 --- !u!1 &259171100
 GameObject:
   m_ObjectHideFlags: 0
@@ -1222,6 +1242,14 @@ PrefabInstance:
       propertyPath: jointMaterial
       value: 
       objectReference: {fileID: 2100000, guid: 9eb011a4ec85f0f42b6e8f2855aff9f8, type: 2}
+    - target: {fileID: 5078232327460202308, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+      propertyPath: assignmentMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5078232327460202308, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+      propertyPath: useOrchestratorAssignment
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5124346222753351342, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
       propertyPath: m_Layer
       value: 3
@@ -1354,8 +1382,7 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 9eb011a4ec85f0f42b6e8f2855aff9f8, type: 2}
-    m_RemovedComponents:
-    - {fileID: 4158498216278496248, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -1363,6 +1390,17 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 520155237}
   m_SourcePrefab: {fileID: 100100000, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+--- !u!114 &307588642 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5078232327460202308, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+  m_PrefabInstance: {fileID: 307588641}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 520155234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b389ec48d8a5524a8f58bc79f0c4566, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &307864461 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8846385761796850408, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
@@ -2775,6 +2813,14 @@ PrefabInstance:
       propertyPath: jointMaterial
       value: 
       objectReference: {fileID: 2100000, guid: e8ebba8bf2f4eea4ea7dfbf4a027e859, type: 2}
+    - target: {fileID: 5078232327460202308, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+      propertyPath: assignmentMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5078232327460202308, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+      propertyPath: useOrchestratorAssignment
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5124346222753351342, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
       propertyPath: m_Layer
       value: 3
@@ -2916,6 +2962,17 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1975264713}
   m_SourcePrefab: {fileID: 100100000, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+--- !u!114 &771096566 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5078232327460202308, guid: c7e684c8e9efe1b40b5edf7b69f21b58, type: 3}
+  m_PrefabInstance: {fileID: 771096565}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1975264710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b389ec48d8a5524a8f58bc79f0c4566, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &803451246
 GameObject:
   m_ObjectHideFlags: 0
