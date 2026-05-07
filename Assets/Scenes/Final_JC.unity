@@ -2199,8 +2199,8 @@ MonoBehaviour:
   flipX: 0
   deadzone: 0.1
   maxRange: 0.5
-  baselineWindow: 2
-  jumpRiseThreshold: 0.12
+  baselineWindow: 1
+  jumpRiseThreshold: 0.06
   jumpFallThreshold: 0.04
   jumpHoldTime: 0.25
   debugText: {fileID: 1659418134}
@@ -2446,7 +2446,7 @@ MonoBehaviour:
   _kinect2: {fileID: 1975264713}
   _player1Ability: {fileID: 2845077376857192518}
   _player2Ability: {fileID: 3999337673812770617}
-  _touchDistance: 0.8
+  _touchDistance: -1
   _separateDistance: 1.2
   _player1Renderer: {fileID: 2030442011321096525}
   _player2Renderer: {fileID: 1991361825}
@@ -7455,8 +7455,8 @@ MonoBehaviour:
   flipX: 0
   deadzone: 0.1
   maxRange: 0.5
-  baselineWindow: 2
-  jumpRiseThreshold: 0.12
+  baselineWindow: 1
+  jumpRiseThreshold: 0.06
   jumpFallThreshold: 0.04
   jumpHoldTime: 0.25
   debugText: {fileID: 2067246977}
