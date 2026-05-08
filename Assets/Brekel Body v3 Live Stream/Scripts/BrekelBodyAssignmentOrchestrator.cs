@@ -61,6 +61,12 @@ public class BrekelBodyAssignmentOrchestrator : MonoBehaviour
         int maxBodies = Brekel_Body_v3_Receiver.MaxBodies;
         int active    = Mathf.Clamp(receiver.ActiveBodyCount, 0, maxBodies);
 
+        if (active <= 0)
+        {
+            ResetAssignments();
+            return;
+        }
+
         var waistAtSlot = new Vector3?[maxBodies];
         for (int b = 0; b < active; b++)
         {
