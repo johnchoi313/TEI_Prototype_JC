@@ -12,7 +12,7 @@ using System.Text;
 public enum Brekel_joint_name_v3
 {
     waist = 0,
-    spine,
+    spine, 
     chest,
     neck,
     head,

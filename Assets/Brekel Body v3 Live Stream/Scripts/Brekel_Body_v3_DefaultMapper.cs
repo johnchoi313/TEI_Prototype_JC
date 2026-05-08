@@ -95,6 +95,9 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
 
     /// <summary>Stream slot pushed by <see cref="SetAssignedBodySlot"/> when <see cref="useOrchestratorAssignment"/> is true. -1 = unassigned this frame.</summary>
     private int _orchestratorAssignedSlot = -1;
+    
+    /// <summary>Previous frame's assigned slot, for change detection logging.</summary>
+    private int _previousAssignedSlot = -1;
 
     /// <summary>Waist joint position from the last successfully read stream frame (Brekel/Unity space after receiver conversion).</summary>
     public Vector3 LastStreamWaistPosition { get; private set; }
@@ -167,10 +170,15 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     /// </summary>
     public void SetAssignedBodySlot(int streamSlot)
     {
-        if (streamSlot < 0)
-            _orchestratorAssignedSlot = -1;
-        else
-            _orchestratorAssignedSlot = Mathf.Clamp(streamSlot, 0, Brekel_Body_v3_Receiver.MaxBodies - 1);
+        int newSlot = streamSlot < 0 ? -1 : Mathf.Clamp(streamSlot, 0, Brekel_Body_v3_Receiver.MaxBodies - 1);
+        
+        if (newSlot != _previousAssignedSlot)
+        {
+            Debug.Log($"[Switch] {gameObject.name}: body_ID {_previousAssignedSlot} → {newSlot}  (frame={Time.frameCount}  time={Time.time:F2}s)", this);
+            _previousAssignedSlot = newSlot;
+        }
+        
+        _orchestratorAssignedSlot = newSlot;
 
         if (useOrchestratorAssignment)
             body_ID = _orchestratorAssignedSlot;
