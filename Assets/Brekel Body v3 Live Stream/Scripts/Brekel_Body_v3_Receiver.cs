@@ -168,6 +168,12 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
     // -------------------------------------------------------------------------
     public bool IsConnected => _isConnected;
 
+    /// <summary>
+    /// Number of bodies in the last successfully parsed packet (indices <c>0 .. ActiveBodyCount-1</c> are valid).
+    /// Slots beyond this in <see cref="GetBody"/> still return objects but hold stale data — never treat those as live tracks.
+    /// </summary>
+    public int ActiveBodyCount { get; private set; }
+
     // -------------------------------------------------------------------------
     //  Internal
     // -------------------------------------------------------------------------
@@ -183,6 +189,9 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
     private BrekelBodyFrame[] _back;
     private readonly object   _swapLock    = new object();
     private bool              _newDataReady;
+
+    /// <summary>Latest packet&apos;s body count; applied when <see cref="Brekel_Body_v3_Receiver"/> swaps buffers (same frame as new poses).</summary>
+    private int _receivedBodyCount;
 
 
 
@@ -214,6 +223,7 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
                 _front        = _back;
                 _back         = tmp;
                 _newDataReady = false;
+                ActiveBodyCount = _receivedBodyCount;
             }
         }
 
@@ -227,6 +237,7 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
     /// <summary>
     /// Returns the latest received body frame for the given body ID,
     /// or null if the ID is out of range.
+    /// Indices &gt;= <see cref="ActiveBodyCount"/> may contain stale poses from older frames — prefer checking the count for assignment logic.
     /// </summary>
     public BrekelBodyFrame GetBody(int bodyID)
     {
@@ -342,7 +353,10 @@ public class Brekel_Body_v3_Receiver : MonoBehaviour
         }
 
         lock (_swapLock)
-            _newDataReady = true;
+        {
+            _receivedBodyCount = numBodies;
+            _newDataReady      = true;
+        }
     }
 
 

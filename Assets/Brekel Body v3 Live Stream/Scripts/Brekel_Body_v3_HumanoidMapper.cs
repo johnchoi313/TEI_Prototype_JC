@@ -24,7 +24,7 @@ using UnityEngine;
 //                           = humanoidBindRot * (defaultBindInverse * incomingRot)
 //
 //  This requires a reference to a DefaultMapper so we can read its bind-pose
-//  inverses.  Both rigs must be tracking the same body ID.
+//  inverses.  Both rigs must follow the same active stream body (DefaultMapper.ActiveStreamBodyIndex).
 // =============================================================================
 public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
 {
@@ -41,7 +41,7 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
 
     [Header("Retargeting Source")]
     [Tooltip("DefaultMapper whose bind-pose is used as the motion reference. " +
-             "Must be tracking the same body ID.")]
+             "Uses the same active stream body as that mapper (ActiveStreamBodyIndex).")]
     public Brekel_Body_v3_DefaultMapper defaultMapper;
 
     [Header("Face (optional)")]
@@ -92,7 +92,13 @@ public class Brekel_Body_v3_HumanoidMapper : MonoBehaviour
         if (receiver == null || !receiver.IsConnected)
             return;
 
-        BrekelBodyFrame body = receiver.GetBody(defaultMapper.body_ID);
+        int streamBody = defaultMapper.ActiveStreamBodyIndex;
+        if (streamBody < 0)
+            return;
+        if (streamBody >= receiver.ActiveBodyCount)
+            return;
+
+        BrekelBodyFrame body = receiver.GetBody(streamBody);
         if (body == null) return;
 
         Retarget(_hips,       Brekel_joint_name_v3.waist,      body);

@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System;
 
 
 // =============================================================================
@@ -29,10 +28,14 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     public GameObject character;
 
     [Header("Mapping Settings")]
-    [Tooltip("When enabled, BrekelBodyAssignmentOrchestrator (or code) must call SetAssignedBodySlot each frame before this component's Update. Inspector Body ID is ignored for streaming.")]
+    [Tooltip(
+        "When enabled, the orchestrator calls SetAssignedBodySlot each frame; Body ID mirrors that assignment " +
+        "(starts -1, then 0, 1, … while tracked).")]
     public bool useOrchestratorAssignment = false;
-    [Tooltip("Which body ID (from the stream) to drive these transforms when Use Orchestrator Assignment is off")]
-    public int  body_ID            = 0;
+    [Tooltip(
+        "Manual mode: pick the Brekel stream body index (0, 1, …), or -1 for unassigned/hidden. " +
+        "Orchestrator mode: overwritten every frame from SetAssignedBodySlot (-1 unassigned, otherwise active slot).")]
+    public int  body_ID            = -1;
     [Tooltip("Apply positions to all joints. When OFF only the root moves (reduces foot sliding)")]
     public bool applyPositionsToAll = true;
 
@@ -96,11 +99,27 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     /// <summary>Waist joint position from the last successfully read stream frame (Brekel/Unity space after receiver conversion).</summary>
     public Vector3 LastStreamWaistPosition { get; private set; }
 
-    /// <summary>Delta time accumulated since the stream frame timestamp last changed for the active body slot.</summary>
+    /// <summary>Delta time accumulated since the stream frame timestamp last changed for the active body slot. Meaningful only when <see cref="useOrchestratorAssignment"/> is false.</summary>
     public float TimeSinceLastFreshStreamFrame { get; private set; }
 
-    /// <summary>Delta time accumulated while unassigned (&lt;0 slot) or while no body frame is available.</summary>
+    /// <summary>Delta time accumulated while unassigned or while no body frame is available. Meaningful only when <see cref="useOrchestratorAssignment"/> is false.</summary>
     public float TimeWhileUnassignedOrNoFrame { get; private set; }
+
+    /// <summary>
+    /// Stream body index for <see cref="Brekel_Body_v3_Receiver.GetBody"/> — orchestrator slot when assignment is on,
+    /// otherwise clamped <see cref="body_ID"/> or -1 when manual mode is unassigned. Humanoid retargeting should use this, not <see cref="body_ID"/> alone.
+    /// </summary>
+    public int ActiveStreamBodyIndex
+    {
+        get
+        {
+            if (useOrchestratorAssignment)
+                return _orchestratorAssignedSlot;
+            if (body_ID < 0)
+                return -1;
+            return Mathf.Clamp(body_ID, 0, Brekel_Body_v3_Receiver.MaxBodies - 1);
+        }
+    }
 
     /// <summary>
     /// Returns the inverse bind-pose rotation for the given joint index.
@@ -112,6 +131,15 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
     // =========================================================================
     //  Unity lifecycle
     // =========================================================================
+    private void OnValidate()
+    {
+        // Editor only: keep a clean -1 when enabling orchestrator (runtime assignment overwrites body_ID each frame).
+        if (Application.isPlaying)
+            return;
+        if (useOrchestratorAssignment)
+            body_ID = -1;
+    }
+
     void Start()
     {
         if (receiver == null)
@@ -134,7 +162,8 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
 
     /// <summary>
     /// Called by <see cref="BrekelBodyAssignmentOrchestrator"/> (early execution order) each frame before Update.
-    /// When <paramref name="streamSlot"/> is -1, this mapper does not drive the skeleton this frame.
+    /// Pass <c>-1</c> when no stream body should drive this avatar (nothing tracked, or duplicate body filtered).
+    /// The mapper hides the character for <c>-1</c>, same as having no usable frame data.
     /// </summary>
     public void SetAssignedBodySlot(int streamSlot)
     {
@@ -142,37 +171,110 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
             _orchestratorAssignedSlot = -1;
         else
             _orchestratorAssignedSlot = Mathf.Clamp(streamSlot, 0, Brekel_Body_v3_Receiver.MaxBodies - 1);
+
+        if (useOrchestratorAssignment)
+            body_ID = _orchestratorAssignedSlot;
     }
 
     void Update()
     {
         if (receiver == null || !receiver.IsConnected)
+        {
+            if (useOrchestratorAssignment)
+                HideForOrchestratorUnassigned();
+            else
+            {
+                TimeWhileUnassignedOrNoFrame += Time.deltaTime;
+                TimeSinceLastFreshStreamFrame += Time.deltaTime;
+                SetCharacterVisible(false);
+            }
             return;
+        }
 
         int effectiveSlot;
         if (useOrchestratorAssignment)
             effectiveSlot = _orchestratorAssignedSlot;
         else
+        {
+            if (body_ID < 0)
+            {
+                TimeWhileUnassignedOrNoFrame += Time.deltaTime;
+                TimeSinceLastFreshStreamFrame += Time.deltaTime;
+                SetCharacterVisible(false);
+                return;
+            }
+
             effectiveSlot = Mathf.Clamp(body_ID, 0, Brekel_Body_v3_Receiver.MaxBodies - 1);
+        }
 
         if (useOrchestratorAssignment && effectiveSlot < 0)
         {
-            TimeWhileUnassignedOrNoFrame += Time.deltaTime;
-            TimeSinceLastFreshStreamFrame += Time.deltaTime;
+            HideForOrchestratorUnassigned();
+            return;
+        }
+
+        int activeFromBrekel = receiver.ActiveBodyCount;
+        if (effectiveSlot >= activeFromBrekel)
+        {
+            if (useOrchestratorAssignment)
+                HideForOrchestratorUnassigned();
+            else
+            {
+                TimeWhileUnassignedOrNoFrame += Time.deltaTime;
+                TimeSinceLastFreshStreamFrame += Time.deltaTime;
+                SetCharacterVisible(false);
+            }
             return;
         }
 
         BrekelBodyFrame body = receiver.GetBody(effectiveSlot);
         if (body == null)
         {
-            TimeWhileUnassignedOrNoFrame += Time.deltaTime;
-            TimeSinceLastFreshStreamFrame += Time.deltaTime;
+            if (useOrchestratorAssignment)
+                HideForOrchestratorUnassigned();
+            else
+            {
+                TimeWhileUnassignedOrNoFrame += Time.deltaTime;
+                TimeSinceLastFreshStreamFrame += Time.deltaTime;
+                SetCharacterVisible(false);
+            }
+            return;
+        }
+
+        if (useOrchestratorAssignment)
+        {
+            TimeSinceLastFreshStreamFrame   = 0f;
+            TimeWhileUnassignedOrNoFrame    = 0f;
+            SetCharacterVisible(true);
+
+            LastStreamWaistPosition = body.joints[(int)Brekel_joint_name_v3.waist].position;
+
+            ApplyJoint(hips,       Brekel_joint_name_v3.waist,       true,                body);
+            ApplyJoint(spine,      Brekel_joint_name_v3.spine,       applyPositionsToAll, body);
+            ApplyJoint(chest,      Brekel_joint_name_v3.chest,       applyPositionsToAll, body);
+            ApplyJoint(neck,       Brekel_joint_name_v3.neck,        applyPositionsToAll, body);
+            ApplyJoint(head,       Brekel_joint_name_v3.head,        applyPositionsToAll, body);
+            ApplyJoint(upperLeg_L, Brekel_joint_name_v3.upperLeg_L,  applyPositionsToAll, body);
+            ApplyJoint(lowerLeg_L, Brekel_joint_name_v3.lowerLeg_L,  applyPositionsToAll, body);
+            ApplyJoint(foot_L,     Brekel_joint_name_v3.foot_L,      applyPositionsToAll, body);
+            ApplyJoint(upperLeg_R, Brekel_joint_name_v3.upperLeg_R,  applyPositionsToAll, body);
+            ApplyJoint(lowerLeg_R, Brekel_joint_name_v3.lowerLeg_R,  applyPositionsToAll, body);
+            ApplyJoint(foot_R,     Brekel_joint_name_v3.foot_R,      applyPositionsToAll, body);
+            ApplyJoint(collar_L,   Brekel_joint_name_v3.collar_L,    applyPositionsToAll, body);
+            ApplyJoint(upperArm_L, Brekel_joint_name_v3.upperArm_L,  applyPositionsToAll, body);
+            ApplyJoint(foreArm_L,  Brekel_joint_name_v3.foreArm_L,   applyPositionsToAll, body);
+            ApplyJoint(hand_L,     Brekel_joint_name_v3.hand_L,      applyPositionsToAll, body);
+            ApplyJoint(collar_R,   Brekel_joint_name_v3.collar_R,    applyPositionsToAll, body);
+            ApplyJoint(upperArm_R, Brekel_joint_name_v3.upperArm_R,  applyPositionsToAll, body);
+            ApplyJoint(foreArm_R,  Brekel_joint_name_v3.foreArm_R,   applyPositionsToAll, body);
+            ApplyJoint(hand_R,     Brekel_joint_name_v3.hand_R,      applyPositionsToAll, body);
+
+            ApplyBlendshapes(body);
             return;
         }
 
         TimeWhileUnassignedOrNoFrame = 0f;
 
-        // Detect whether fresh data is arriving by watching the frame timestamp.
         bool freshData = !Mathf.Approximately(body.timestamp, _lastDataTimestamp);
         if (freshData)
         {
@@ -214,6 +316,19 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
         ApplyJoint(hand_R,     Brekel_joint_name_v3.hand_R,      applyPositionsToAll, body);
 
         ApplyBlendshapes(body);
+    }
+
+    /// <summary>
+    /// Orchestrator mode only: hide avatar; no Brekel timestamp / idle timers (orchestrator owns timing policy).
+    /// Resets manual-mode bookkeeping so toggling assignment mode stays sane.
+    /// </summary>
+    private void HideForOrchestratorUnassigned()
+    {
+        TimeSinceLastFreshStreamFrame = 0f;
+        TimeWhileUnassignedOrNoFrame    = 0f;
+        SetCharacterVisible(false);
+        _lastDataTimestamp = float.MinValue;
+        _noDataTimer       = 0f;
     }
 
 
