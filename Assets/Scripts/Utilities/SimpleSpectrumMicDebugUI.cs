@@ -6,11 +6,11 @@ using UnityEngine.UI;
 /// <summary>
 /// Runtime debug panel for SimpleSpectrum microphone configuration.
 ///
-/// Layout  [ Microphone Debug UI | Volume: 0.123 | Speed: 4.567 | [Dropdown] ]
+/// Layout  [ Microphone Debug UI | Volume: 0.123 | Energy: 4.567 | [Dropdown] ]
 ///
 /// Features
 ///   • Horizontal row of TMP labels — one per value — plus a mic dropdown.
-///   • Volume and Speed floats shown to 3 decimal places.
+///   • Volume and Energy floats shown to 3 decimal places.
 ///   • TMP_Dropdown auto-populated with all connected microphone devices.
 ///   • Selecting a device rebuilds SimpleSpectrum and re-calibrates MicVolumeToFishSpeed.
 ///   • Selected device persisted via PlayerPrefs and restored on start.
@@ -20,10 +20,10 @@ using UnityEngine.UI;
 ///   2. Inside add (left to right):
 ///        • TMP_Text  "Microphone Debug UI"  (static label) — assign to Header Label
 ///        • TMP_Text  (volume readout)        — assign to Volume Label
-///        • TMP_Text  (speed readout)         — assign to Speed Label  (optional)
+///        • TMP_Text  (energy readout)        — assign to Energy Label  (optional)
 ///        • TMP_Dropdown                      — assign to Mic Dropdown
 ///   3. Assign SimpleSpectrum (SourceType = MicrophoneInput).
-///   4. Optionally assign MicVolumeToFishSpeed for the speed cell.
+///   4. Optionally assign MicVolumeToFishSpeed for the energy cell.
 /// </summary>
 public class SimpleSpectrumMicDebugUI : MonoBehaviour
 {
@@ -34,7 +34,7 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
     [Tooltip("The SimpleSpectrum instance configured with SourceType = MicrophoneInput.")]
     [SerializeField] private SimpleSpectrum _spectrum;
 
-    [Tooltip("Optional — populates the Speed cell and triggers recalibration on mic change.")]
+    [Tooltip("Optional — populates the Energy cell and triggers recalibration on mic change.")]
     [SerializeField] private MicVolumeToFishSpeed _micToSpeed;
 
     [Header("UI — horizontal cells (left → right)")]
@@ -44,7 +44,10 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
     [Tooltip("Displays live RMS volume to 3 d.p.")]
     [SerializeField] private TMP_Text _volumeLabel;
 
-    [Tooltip("Displays current fish speed to 3 d.p. Leave unassigned if not using MicVolumeToFishSpeed.")]
+    [Tooltip("Displays current energy value to 3 d.p. Leave unassigned if not using MicVolumeToFishSpeed.")]
+    [SerializeField] private TMP_Text _energyLabel;
+
+    [Tooltip("Displays resulting fish speed (after discrete snap) to 3 d.p. Leave unassigned if not needed.")]
     [SerializeField] private TMP_Text _speedLabel;
 
     [Tooltip("Dropdown populated with available microphone devices.")]
@@ -59,7 +62,7 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
     private void Start()
     {
         if (_headerLabel != null)
-            _headerLabel.text = "Microphone Debug UI";
+            _headerLabel.text = "Mic Debug";
 
         PopulateDropdown();
         RestorePersistedMic();
@@ -86,7 +89,17 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
                     : $"Vol: {ComputeRMSVolume(_spectrum.spectrumOutputData):F3}";
         }
 
-        // Speed cell
+        // Energy cell
+        if (_energyLabel != null)
+        {
+            _energyLabel.text = calibrating
+                ? "---"
+                : _micToSpeed != null
+                    ? $"Nrg: {_micToSpeed.CurrentEnergy:F3}"
+                    : string.Empty;
+        }
+
+        // Speed cell (post-discrete-snap output)
         if (_speedLabel != null)
         {
             _speedLabel.text = calibrating
@@ -108,7 +121,7 @@ public class SimpleSpectrumMicDebugUI : MonoBehaviour
         var options = new List<TMP_Dropdown.OptionData>();
         var names   = new List<string>();
 
-        // None — disables mic entirely, fish runs at constant default speed.
+        // None — disables mic entirely, fish runs at constant default energy.
         options.Add(new TMP_Dropdown.OptionData("None (Mic Off)"));
         names.Add(NONE_SENTINEL);
 

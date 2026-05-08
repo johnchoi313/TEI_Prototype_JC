@@ -1,12 +1,14 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Reads microphone volume from a SimpleSpectrum instance and maps it to
 /// PlayerFishController.FollowSpeed each frame.
 ///
 /// Volume is computed as the RMS of SimpleSpectrum's processed output bars,
-/// then remapped from [minVolume, maxVolume] → [minSpeed, maxSpeed].
+/// then remapped from [minVolume, maxVolume] → [minEnergy, maxEnergy].
+/// "Energy" is the internal mic-driven value passed to fish controllers as FollowSpeed.
 ///
 /// Auto-calibration
 ///   On start the script silently listens for CalibrationDuration seconds,
@@ -14,13 +16,13 @@ using UnityEngine;
 ///     minVolume = average ambient RMS
 ///     maxVolume = minVolume × MaxVolumeMultiplier (default 4×)
 ///   This means you never need to recalibrate when swapping microphones.
-///   The fish stays at min speed during calibration. A manual recalibrate
+///   The fish stays at min energy during calibration. A manual recalibrate
 ///   can be triggered at runtime via RecalibrateAmbient().
 ///
 /// SCENE SETUP
 ///   1. Place this component on any GameObject in the scene (e.g. an "AudioManager").
 ///   2. Point Spectrum at a SimpleSpectrum configured with SourceType = MicrophoneInput.
-///   3. Set Min/Max Speed to taste — volume thresholds are set automatically.
+///   3. Set Min/Max Energy to taste — volume thresholds are set automatically.
 ///   4. Assign this component to the Mic Volume Driver field on each PlayerFishController
 ///      that should be driven by mic volume.
 /// </summary>
@@ -34,41 +36,59 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     [Tooltip("Seconds of ambient silence to sample at startup for noise-floor detection.")]
     [SerializeField] private float _calibrationDuration = 1.5f;
 
-    [Tooltip("maxVolume = minVolume × this multiplier. 4 means you need to be 4× louder than ambient to reach full speed.")]
+    [Tooltip("maxVolume = minVolume × this multiplier. 4 means you need to be 4× louder than ambient to reach max energy.")]
     [SerializeField] private float _maxVolumeMultiplier = 4f;
 
     [Tooltip("Absolute floor for minVolume — prevents near-zero values on a very quiet mic from causing instability.")]
     [SerializeField] private float _minVolumeFloor = 0.001f;
 
-    [Header("Speed Range")]
-    [Tooltip("Fish speed when volume is at or below minVolume (ambient noise floor).")]
-    [SerializeField] private float _minSpeed = 1f;
+    [Header("Energy Range")]
+    [Tooltip("Energy value sent to fish controllers when volume is at or below minVolume (ambient noise floor).")]
+    [SerializeField] private float _minEnergy = 1f;
 
-    [Tooltip("Fish speed when volume is at or above maxVolume.")]
-    [SerializeField] private float _maxSpeed = 10f;
+    [Tooltip("Energy value sent to fish controllers when volume is at or above maxVolume.")]
+    [SerializeField] private float _maxEnergy = 10f;
 
-    [Tooltip("Constant speed sent to fish controllers when mic is set to None. " +
-             "Should match the default Follow Speed on PlayerFishController.")]
-    [SerializeField] private float _disabledSpeed = 4f;
+    [Tooltip("Image whose fill amount tracks current energy normalized from minEnergy (0) to maxEnergy (1).")]
+    [SerializeField] private Image _energyFillImage;
+
+    [Tooltip("Fill image color when energy is at minimum.")]
+    public Color fillColorMin = Color.white;
+
+    [Tooltip("Fill image color when energy is at maximum.")]
+    public Color fillColorMax = Color.white;
 
     [Header("Smoothing")]
-    [Tooltip("Seconds for speed to rise from min to max when volume spikes. Smaller = snappier attack.")]
+    [Tooltip("Seconds for energy to rise from min to max when volume spikes. Smaller = snappier attack.")]
     [SerializeField] private float _attackTime = 0.08f;
 
-    [Tooltip("Seconds for speed to fall back to min after volume drops. Larger = speed lingers longer.")]
+    [Tooltip("Seconds for energy to fall back to min after volume drops. Larger = energy lingers longer.")]
     [SerializeField] private float _decayTime = 2.5f;
 
+    [Header("Fish Speed")]
+    [Tooltip("Discrete mode: speed snaps to maxSpeed when smoothedEnergy >= maxEnergy, otherwise defaultSpeed. " +
+             "Continuous mode: speed lerps from defaultSpeed to maxSpeed across the energy range.")]
+    [SerializeField] private bool _discrete = false;
+
+    [Tooltip("Speed sent to fish controllers when mic is disabled or energy is below threshold (discrete mode).")]
+    [SerializeField] private float _defaultSpeed = 4f;
+
+    [Tooltip("Speed sent to fish controllers when energy is at or above maxEnergy. " +
+             "In continuous mode this is the high end of the speed lerp.")]
+    [SerializeField] private float _maxSpeed = 10f;
+
+
     [Header("Camera Background Color")]
-    [Tooltip("Enable background color lerping based on speed.")]
+    [Tooltip("Enable background color lerping based on energy.")]
     public bool enableColorLerp = true;
 
-    [Tooltip("Camera whose background solid color is lerped by speed. Leave unassigned to skip.")]
+    [Tooltip("Camera whose background solid color is lerped by energy. Leave unassigned to skip.")]
     public Camera backgroundCamera;
 
-    [Tooltip("Background color when fish speed is at minimum.")]
+    [Tooltip("Background color when energy is at minimum.")]
     public Color bgColorMin = Color.black;
 
-    [Tooltip("Background color when fish speed is at maximum.")]
+    [Tooltip("Background color when energy is at maximum.")]
     public Color bgColorMax = new Color(0.1f, 0.2f, 0.5f);
 
     [Header("Debug (read-only)")]
@@ -82,22 +102,32 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     [SerializeField] private float _debugMinVolume;
     [Tooltip("Calibrated maximum volume threshold.")]
     [SerializeField] private float _debugMaxVolume;
-    [Tooltip("Current fish speed being applied.")]
-    [SerializeField] private float _debugCurrentSpeed;
+    [Tooltip("Current energy value being applied.")]
+    [SerializeField] private float _debugCurrentEnergy;
     [Tooltip("0–1 value fed into the background color lerp. 0 = bgColorMin, 1 = bgColorMax.")]
     [SerializeField] private float _debugColorT;
 
     // ── Public ────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The smoothed fish speed currently being applied.
-    /// Returns DisabledSpeed as a constant when mic is set to None.
+    /// The smoothed energy value currently being applied (passed to fish as FollowSpeed).
+    /// In discrete mode: snaps to maxEnergy or disabledEnergy.
+    /// Returns DisabledEnergy as a constant when mic is set to None.
     /// </summary>
-    public float CurrentSpeed => _isMicDisabled ? _disabledSpeed : _smoothedSpeed;
+    public float CurrentSpeed
+    {
+        get
+        {
+            if (_isMicDisabled) return _defaultSpeed;
+            if (_discrete)      return _smoothedEnergy >= _maxEnergy ? _maxSpeed : _defaultSpeed;
+            float t = Mathf.Clamp01(Mathf.InverseLerp(_minEnergy, _maxEnergy, _smoothedEnergy));
+            return Mathf.Lerp(_defaultSpeed, _maxSpeed, t);
+        }
+    }
 
     /// <summary>
-    /// Enables or disables mic-driven speed. When disabled, CurrentSpeed
-    /// returns the constant DisabledSpeed and SimpleSpectrum is turned off.
+    /// Enables or disables mic-driven energy. When disabled, CurrentSpeed
+    /// returns the constant DisabledEnergy and SimpleSpectrum is turned off.
     /// Called by SimpleSpectrumMicDebugUI when None is selected.
     /// </summary>
     public void SetMicDisabled(bool disabled)
@@ -106,33 +136,36 @@ public class MicVolumeToFishSpeed : MonoBehaviour
         if (_spectrum != null)
             _spectrum.isEnabled = !disabled;
         if (disabled)
-            _smoothedSpeed = _disabledSpeed;
+            _smoothedEnergy = _minEnergy;
     }
+
+    /// <summary>Raw smoothed energy level before discrete snapping. Use this for UI readouts.</summary>
+    public float CurrentEnergy => _smoothedEnergy;
 
     /// <summary>Raw RMS volume from the spectrum this frame (0–1).</summary>
     public float CurrentRMS => _debugCurrentVolume;
 
-    /// <summary>The configured minimum fish speed (maps to silence).</summary>
-    public float MinSpeed => _minSpeed;
+    /// <summary>The configured minimum energy (maps to silence).</summary>
+    public float MinSpeed => _minEnergy;
 
-    /// <summary>The configured maximum fish speed (maps to loudest input).</summary>
-    public float MaxSpeed => _maxSpeed;
+    /// <summary>The configured maximum energy (maps to loudest input).</summary>
+    public float MaxSpeed => _maxEnergy;
 
     /// <summary>True while the initial ambient calibration is running.</summary>
     public bool IsCalibrating => _isCalibrating;
 
-    /// <summary>True when mic has been set to None — CurrentSpeed returns DisabledSpeed.</summary>
+    /// <summary>True when mic has been set to None — CurrentSpeed returns DisabledEnergy.</summary>
     public bool IsMicDisabled => _isMicDisabled;
 
     /// <summary>
     /// Re-runs the ambient noise calibration (e.g. after switching microphone).
-    /// Fish stays at minimum speed during the sample window.
+    /// Fish stays at minimum energy during the sample window.
     /// </summary>
     public void RecalibrateAmbient() => StartCoroutine(CalibrateAmbient());
 
     // ── Runtime ───────────────────────────────────────────────────────────────
 
-    private float _smoothedSpeed;
+    private float _smoothedEnergy;
     private float _minVolume;
     private float _maxVolume;
     private bool  _isMicDisabled;
@@ -141,7 +174,7 @@ public class MicVolumeToFishSpeed : MonoBehaviour
 
     private void Awake()
     {
-        _smoothedSpeed = _minSpeed;
+        _smoothedEnergy = _minEnergy;
 
         // Safe fallback values until calibration finishes.
         _minVolume = _minVolumeFloor;
@@ -157,29 +190,29 @@ public class MicVolumeToFishSpeed : MonoBehaviour
     {
         if (_isMicDisabled)
         {
-            _smoothedSpeed = _disabledSpeed;
+            _smoothedEnergy = _minEnergy;
             UpdateBackgroundColor();
             return;
         }
 
         if (_isCalibrating || _spectrum == null || !_spectrum.isEnabled)
         {
-            _smoothedSpeed = _minSpeed;
+            _smoothedEnergy = _minEnergy;
         }
         else
         {
             float volume = ComputeRMSVolume(_spectrum.spectrumOutputData);
-            float targetSpeed = MapVolumeToSpeed(volume);
+            float targetEnergy = MapVolumeToEnergy(volume);
 
             // Frame-rate-independent exponential smoothing.
             // t = 1 - exp(-dt / halfLife) approximates a proper RC filter.
-            // Attack and decay use separate time constants so high speed lingers.
-            float timeConstant = targetSpeed > _smoothedSpeed ? _attackTime : _decayTime;
+            // Attack and decay use separate time constants so high energy lingers.
+            float timeConstant = targetEnergy > _smoothedEnergy ? _attackTime : _decayTime;
             float t = 1f - Mathf.Exp(-Time.deltaTime / Mathf.Max(timeConstant, 0.001f));
-            _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, targetSpeed, t);
+            _smoothedEnergy = Mathf.Lerp(_smoothedEnergy, targetEnergy, t);
 
             _debugCurrentVolume = volume;
-            _debugCurrentSpeed  = _smoothedSpeed;
+            _debugCurrentEnergy = _smoothedEnergy;
             _debugMinVolume     = _minVolume;
             _debugMaxVolume     = _maxVolume;
         }
@@ -187,6 +220,7 @@ public class MicVolumeToFishSpeed : MonoBehaviour
         // Always update — runs even during calibration so the color
         // is visible and starts at bgColorMin immediately.
         UpdateBackgroundColor();
+        UpdateFillImage();
     }
 
     private void UpdateBackgroundColor()
@@ -197,9 +231,17 @@ public class MicVolumeToFishSpeed : MonoBehaviour
         if (backgroundCamera.clearFlags != CameraClearFlags.SolidColor)
             backgroundCamera.clearFlags = CameraClearFlags.SolidColor;
 
-        float t = Mathf.InverseLerp(_minSpeed, _maxSpeed, _smoothedSpeed);
+        float t = Mathf.Clamp01(Mathf.InverseLerp(_minEnergy, _maxEnergy, _smoothedEnergy));
         _debugColorT = t;
         backgroundCamera.backgroundColor = Color.Lerp(bgColorMin, bgColorMax, t);
+    }
+
+    private void UpdateFillImage()
+    {
+        if (_energyFillImage == null) return;
+        float t = Mathf.Clamp01(Mathf.InverseLerp(_minEnergy, _maxEnergy, _smoothedEnergy));
+        _energyFillImage.fillAmount = t;
+        _energyFillImage.color      = Color.Lerp(fillColorMin, fillColorMax, t);
     }
 
     // ── Calibration ───────────────────────────────────────────────────────────
@@ -211,8 +253,8 @@ public class MicVolumeToFishSpeed : MonoBehaviour
         // Wait one frame so SimpleSpectrum has initialised its output array.
         yield return null;
 
-        float elapsed   = 0f;
-        float rmsSum    = 0f;
+        float elapsed     = 0f;
+        float rmsSum      = 0f;
         int   sampleCount = 0;
 
         while (elapsed < _calibrationDuration)
@@ -253,9 +295,11 @@ public class MicVolumeToFishSpeed : MonoBehaviour
         return Mathf.Sqrt(sum / bars.Length);
     }
 
-    private float MapVolumeToSpeed(float volume)
+    private float MapVolumeToEnergy(float volume)
     {
-        float t = Mathf.InverseLerp(_minVolume, _maxVolume, volume);
-        return Mathf.Lerp(_minSpeed, _maxSpeed, t);
+        // Unclamped ratio so energy can exceed maxEnergy on very loud input.
+        float range = _maxVolume - _minVolume;
+        float t = range > 0f ? (volume - _minVolume) / range : 0f;
+        return _minEnergy + t * (_maxEnergy - _minEnergy);
     }
 }

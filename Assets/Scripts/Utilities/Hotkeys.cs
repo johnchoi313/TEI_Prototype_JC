@@ -15,6 +15,7 @@ using UnityEngine;
 /// Shift+R     — Regenerate the maze. Stops logging first if a session is active.
 /// Shift+V     — Toggle visibility of the Minimap camera GameObject.
 /// Shift+S     — Show/hide SimpleSpectrum bars by offsetting +100 Y (no SetActive).
+/// Shift+P     — Toggle visibility of the progress bar UI panel.
 /// Tab         — Swap fish abilities between players (BreakWall ↔ CollectStation).
 ///
 /// All visibility states are saved to PlayerPrefs and restored on next run.
@@ -30,6 +31,7 @@ public class Hotkeys : MonoBehaviour
     private const string PrefUsingKinect  = "Hotkeys_UsingKinect";
     private const string PrefMinimapUI    = "Hotkeys_MinimapUI";
     private const string PrefSpectrumUI   = "Hotkeys_SpectrumUI";
+    private const string PrefProgressUI   = "Hotkeys_ProgressUI";
 
     private const float SpectrumHideOffset = 100f;
 
@@ -83,6 +85,10 @@ public class Hotkeys : MonoBehaviour
     [Tooltip("SimpleSpectrum bars GameObject. Toggled by offsetting +100 Y instead of SetActive.")]
     public GameObject spectrumBars;
 
+    [Header("Shift+P — Progress Bar UI Toggle")]
+    [Tooltip("Progress bar UI panel to show/hide when Shift+P is pressed.")]
+    public GameObject progressBarUI;
+
     [Header("Tab — Ability Swap")]
     [Tooltip("Renderer on Player 1's fish (or any indicator object) whose material is swapped on Tab.")]
     public Renderer player1AbilityRenderer;
@@ -98,13 +104,14 @@ public class Hotkeys : MonoBehaviour
 
     // ── Runtime state ─────────────────────────────────────────────────────────
 
-    private bool  _kinectVisible   = true;
-    private bool  _micUIVisible    = true;
-    private bool  _fpsVisible      = true;
-    private bool  _loggerVisible   = true;
-    private bool  _usingKinect     = false;
-    private bool  _minimapVisible  = true;
-    private bool  _spectrumVisible = true;
+    private bool  _kinectVisible    = true;
+    private bool  _micUIVisible     = true;
+    private bool  _fpsVisible       = true;
+    private bool  _loggerVisible    = true;
+    private bool  _usingKinect      = false;
+    private bool  _minimapVisible   = true;
+    private bool  _spectrumVisible  = true;
+    private bool  _progressVisible  = true;
     private float _spectrumOriginalY;
 
     // Master toggle for Shift+A — does not affect individual panel states or prefs.
@@ -120,6 +127,7 @@ public class Hotkeys : MonoBehaviour
         ApplyObject(fpsDisplay,    _fpsVisible);
         ApplyObject(loggerUI,      _loggerVisible);
         ApplyObject(minimapCamera, _minimapVisible);
+        ApplyObject(progressBarUI, _progressVisible);
 
         // Capture the scene-authored Y before any offset is applied, then restore state.
         if (spectrumBars != null)
@@ -176,6 +184,9 @@ public class Hotkeys : MonoBehaviour
         if (shift && Input.GetKeyDown(KeyCode.S))
             ToggleSpectrum();
 
+        if (shift && Input.GetKeyDown(KeyCode.P))
+            ToggleProgressBarUI();
+
         if (Input.GetKeyDown(KeyCode.Tab))
             SwapAbilities();
     }
@@ -190,8 +201,20 @@ public class Hotkeys : MonoBehaviour
         ApplyObject(fpsDisplay,    _allOn);
         ApplyObject(loggerUI,      _allOn);
         ApplyObject(minimapCamera, _allOn);
+        ApplyObject(progressBarUI, _allOn);
         ApplySpectrumPosition(_allOn);
         Debug.Log($"[Hotkeys] All UI panels {(_allOn ? "shown" : "hidden")} (Shift+A).");
+    }
+
+    private void ToggleProgressBarUI()
+    {
+        _progressVisible = !_progressVisible;
+        ApplyObject(progressBarUI, _progressVisible);
+
+        PlayerPrefs.SetInt(PrefProgressUI, _progressVisible ? 1 : 0);
+        PlayerPrefs.Save();
+
+        Debug.Log($"[Hotkeys] Progress bar UI {(_progressVisible ? "shown" : "hidden")} (Shift+P).");
     }
 
     private void ToggleLoggerUI()
@@ -385,6 +408,7 @@ public class Hotkeys : MonoBehaviour
         _loggerVisible  = PlayerPrefs.GetInt(PrefLoggerUI,  1) == 1;
         _minimapVisible  = PlayerPrefs.GetInt(PrefMinimapUI,  1) == 1;
         _spectrumVisible = PlayerPrefs.GetInt(PrefSpectrumUI, 1) == 1;
+        _progressVisible = PlayerPrefs.GetInt(PrefProgressUI, 1) == 1;
         // _usingKinect is loaded directly in Awake (needs Inspector fallback value)
     }
 }

@@ -251,6 +251,22 @@ public class Brekel_Body_v3_DefaultMapper : MonoBehaviour
 
         if (useOrchestratorAssignment)
         {
+            bool freshOrchestratorData = !Mathf.Approximately(body.timestamp, _lastDataTimestamp);
+            if (freshOrchestratorData)
+            {
+                _lastDataTimestamp = body.timestamp;
+                _noDataTimer       = 0f;
+            }
+            else
+            {
+                _noDataTimer += Time.deltaTime;
+                if (_noDataTimer >= NoDataHideDelay)
+                {
+                    HideForOrchestratorUnassigned();
+                    return;
+                }
+            }
+
             TimeSinceLastFreshStreamFrame   = 0f;
             TimeWhileUnassignedOrNoFrame    = 0f;
             SetCharacterVisible(true);
